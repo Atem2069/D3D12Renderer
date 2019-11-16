@@ -4,6 +4,8 @@
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
+#include "Renderer/BaseRenderer.h"
+
 constexpr int Width = 500;
 constexpr int Height = 500;
 
@@ -24,6 +26,13 @@ int main()
 		std::cout << "Failed to create GLFW window.. " << std::endl;
 		return -1;
 	}
+
+	HWND hwnd = glfwGetWin32Window(m_window);
+
+	D3D m_context;
+	if (!m_context.init(Width, Height, hwnd))
+		return -1;
+	D3DContext::Register(m_context);
 
 	while (!glfwWindowShouldClose(m_window))
 	{
