@@ -127,10 +127,12 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Renderer\BaseRenderer.cpp" />
+    <ClCompile Include="Renderer\BasicObject.cpp" />
     <ClCompile Include="Renderer\RenderPipeline.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Renderer\BaseRenderer.h" />
+    <ClInclude Include="Renderer\BasicObject.h" />
     <ClInclude Include="Renderer\RenderPipeline.h" />
   </ItemGroup>
   <ItemGroup>

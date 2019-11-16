@@ -148,8 +148,17 @@ bool D3D::init(int width, int height, HWND hwnd)
 	if (!fenceEvent)
 		return false;
 
-
-
+	m_viewport.Width = width;
+	m_viewport.Height = height;
+	m_viewport.MinDepth = 0;
+	m_viewport.MaxDepth = 1;
+	m_viewport.TopLeftX = 0;
+	m_viewport.TopLeftY = 0;
+	
+	m_scissorRect.right = width;
+	m_scissorRect.bottom = height;
+	m_scissorRect.left = 0;
+	m_scissorRect.top = 0;
 	return true;
 }
 
@@ -185,12 +194,18 @@ bool D3D::synchronizeAndReset()
 	return true;
 }
 
-bool D3D::executeAndPresent()
+bool D3D::executeAndPresent(bool vsync)
 {
 	m_commandList->Close();
 	m_commandQueue->ExecuteCommandLists(1, (ID3D12CommandList**)&m_commandList);
 	m_commandQueue->Signal(m_fences[this->getCurrentBuffer()], m_fenceValues[this->getCurrentBuffer()]);
-	m_swapChain->Present(0, 0);
+	HRESULT result = m_swapChain->Present((int)vsync, 0);
+	if (FAILED(result))
+	{
+		std::cout << "DXGI Present Error : " << result << std::endl;
+		std::cout << m_device->GetDeviceRemovedReason() << std::endl;
+		return false;
+	}
 	return true;
 }
 
@@ -206,6 +221,9 @@ void D3D::beginRenderPass(float r, float g, float b, float a)
 	m_commandList->OMSetRenderTargets(1, &rtvDescriptorHandle, FALSE, &dsvDescriptorHandle);
 	m_commandList->ClearRenderTargetView(rtvDescriptorHandle, clearColor, 0, nullptr);
 	m_commandList->ClearDepthStencilView(dsvDescriptorHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+
+	m_commandList->RSSetViewports(1, &m_viewport);
+	m_commandList->RSSetScissorRects(1, &m_scissorRect);
 	
 }
 

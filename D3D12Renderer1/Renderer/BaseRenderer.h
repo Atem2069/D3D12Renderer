@@ -8,7 +8,7 @@
 #include<iostream>
 
 using namespace DirectX;
-struct Vertexs
+struct Vertex
 {
 	XMFLOAT3 position;
 };
@@ -24,7 +24,7 @@ public:
 	//Force fence synchronization, and then reset the command list (only 1 as this is a singlethreaded renderer)
 	bool synchronizeAndReset();
 	//Close command list, execute it on command queue and present swapchain
-	bool executeAndPresent();
+	bool executeAndPresent(bool vsync);
 	//Specifies the current buffer that is free to be worked on
 	int getCurrentBuffer();
 
@@ -52,6 +52,9 @@ private:
 
 	ID3D12DescriptorHeap* m_depthStencilDescriptorHeap;
 	ID3D12Resource* m_depthStencilBuffer;
+
+	D3D12_VIEWPORT m_viewport;
+	D3D12_RECT m_scissorRect;
 
 };
 

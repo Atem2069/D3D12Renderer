@@ -27,12 +27,18 @@
     <ClCompile Include="Renderer\RenderPipeline.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Renderer\BasicObject.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Renderer\BaseRenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Renderer\RenderPipeline.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\BasicObject.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

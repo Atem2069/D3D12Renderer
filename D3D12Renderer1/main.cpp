@@ -6,6 +6,7 @@
 
 #include "Renderer/BaseRenderer.h"
 #include "Renderer/RenderPipeline.h"
+#include "Renderer/BasicObject.h"
 
 constexpr int Width = 500;
 constexpr int Height = 500;
@@ -39,17 +40,36 @@ int main()
 	if (!m_pipeline.initBasic(R"(Shaders\basicVertex.hlsl)", R"(Shaders\basicPixel.hlsl)"))
 		return -1;
 
+	Vertex vertices[3];
+	vertices[0].position = XMFLOAT3(-0.5f, -0.5f, 0.0f);
+	vertices[1].position = XMFLOAT3(0.0f, 0.5f, 0.0f);
+	vertices[2].position = XMFLOAT3(0.5f, -0.5f, 0.0f);
+	BasicObject m_basicObject;
+	if (!m_basicObject.init(vertices, 3))
+		return false;
+
 	D3DContext::getCurrent()->executeAndSynchronize();
+
+	double lastTime = 0, currentTime = glfwGetTime(), deltaTime = 1;
 	while (!glfwWindowShouldClose(m_window))
 	{
+		glfwPollEvents();
+
 		D3DContext::getCurrent()->synchronizeAndReset();
 
-		D3DContext::getCurrent()->beginRenderPass(1, 0, 0, 1);
+		D3DContext::getCurrent()->beginRenderPass(0.564f, 0.8f, 0.976f, 1.f);
 		m_pipeline.bind();
+		m_basicObject.draw();
 		D3DContext::getCurrent()->endRenderPass();
 
-		D3DContext::getCurrent()->executeAndPresent();
-		glfwPollEvents();
+		if (!D3DContext::getCurrent()->executeAndPresent(true))
+			glfwSetWindowShouldClose(m_window, GLFW_TRUE);
+
+		//Calculate deltatime
+		deltaTime = currentTime - lastTime;
+		lastTime = currentTime;
+		currentTime = glfwGetTime();
+		glfwSetWindowTitle(m_window, std::to_string(1 / deltaTime).c_str());
 	}
 	return 0;
 }
