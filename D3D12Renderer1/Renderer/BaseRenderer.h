@@ -2,8 +2,16 @@
 
 #include<d3d12.h>
 #include<dxgi1_6.h>
+#include<d3dcompiler.h>
+#include <directxmath.h>
 #include"d3dx12.h"
 #include<iostream>
+
+using namespace DirectX;
+struct Vertexs
+{
+	XMFLOAT3 position;
+};
 
 class D3D
 {
@@ -40,6 +48,7 @@ private:
 
 	ID3D12DescriptorHeap* m_renderTargetDescriptorHeap;
 	ID3D12Resource* m_renderTargets[2];
+	UINT m_renderTargetDescriptorSize;
 
 	ID3D12DescriptorHeap* m_depthStencilDescriptorHeap;
 	ID3D12Resource* m_depthStencilBuffer;

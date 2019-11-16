@@ -5,6 +5,7 @@
 #include <GLFW/glfw3native.h>
 
 #include "Renderer/BaseRenderer.h"
+#include "Renderer/RenderPipeline.h"
 
 constexpr int Width = 500;
 constexpr int Height = 500;
@@ -34,12 +35,17 @@ int main()
 		return -1;
 	D3DContext::Register(m_context);
 
+	RenderPipeline m_pipeline;
+	if (!m_pipeline.initBasic(R"(Shaders\basicVertex.hlsl)", R"(Shaders\basicPixel.hlsl)"))
+		return -1;
+
 	D3DContext::getCurrent()->executeAndSynchronize();
 	while (!glfwWindowShouldClose(m_window))
 	{
 		D3DContext::getCurrent()->synchronizeAndReset();
 
 		D3DContext::getCurrent()->beginRenderPass(1, 0, 0, 1);
+		m_pipeline.bind();
 		D3DContext::getCurrent()->endRenderPass();
 
 		D3DContext::getCurrent()->executeAndPresent();

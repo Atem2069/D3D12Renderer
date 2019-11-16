@@ -66,7 +66,7 @@ bool D3D::init(int width, int height, HWND hwnd)
 	
 	result = m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_commandAllocators[0], nullptr, __uuidof(ID3D12GraphicsCommandList), (void**)&m_commandList);
 	if (FAILED(result))
-		return -1;
+		return false;
 
 	//Creating rendertargets
 
@@ -83,7 +83,7 @@ bool D3D::init(int width, int height, HWND hwnd)
 		return false;
 	}
 
-	UINT rtvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);	//Have to get the size of a descriptor from the device to not screw everything
+	m_renderTargetDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);	//Have to get the size of a descriptor from the device to not screw everything
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandle(m_renderTargetDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 
 	//Now time to fill out descriptor heap with rendertargets
@@ -97,7 +97,7 @@ bool D3D::init(int width, int height, HWND hwnd)
 		}
 
 		m_device->CreateRenderTargetView(m_renderTargets[i], nullptr, rtvDescriptorHandle);
-		rtvDescriptorHandle.Offset(1, rtvDescriptorSize);	//Offset so next RTV can be put in
+		rtvDescriptorHandle.Offset(1, m_renderTargetDescriptorSize);	//Offset so next RTV can be put in
 	}
 
 	//Now making a depth-stencil view
@@ -197,11 +197,10 @@ bool D3D::executeAndPresent()
 void D3D::beginRenderPass(float r, float g, float b, float a)
 {
 	int currentBuffer = this->getCurrentBuffer();
-	UINT rtvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	float clearColor[4] = { r,g,b,a };
 
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[this->getCurrentBuffer()], D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
-	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandle(m_renderTargetDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), currentBuffer, rtvDescriptorSize);
+	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandle(m_renderTargetDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), currentBuffer, m_renderTargetDescriptorSize);
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvDescriptorHandle(m_depthStencilDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 
 	m_commandList->OMSetRenderTargets(1, &rtvDescriptorHandle, FALSE, &dsvDescriptorHandle);
