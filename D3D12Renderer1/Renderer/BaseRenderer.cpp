@@ -53,6 +53,103 @@ bool D3D::init(int width, int height, HWND hwnd)
 	
 	m_swapChain = static_cast<IDXGISwapChain3*>(swapChain1);
 
+	//Create command allocators and command list
+	for (int i = 0; i < 2; i++)
+	{
+		result = m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, __uuidof(ID3D12CommandAllocator), (void**)&m_commandAllocators[i]);
+		if (FAILED(result))
+		{
+			std::cout << "Failed on creating command allocator " << i << std::endl;
+			return false;
+		}
+	}
+	
+	result = m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_commandAllocators[0], nullptr, __uuidof(ID3D12GraphicsCommandList), (void**)&m_commandList);
+	if (FAILED(result))
+		return -1;
+
+	//Creating rendertargets
+
+	//First - descriptor heap for the rendertargets
+	D3D12_DESCRIPTOR_HEAP_DESC rtvDescriptorHeapDesc = {};
+	rtvDescriptorHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+	rtvDescriptorHeapDesc.NumDescriptors = 2;
+	rtvDescriptorHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+
+	result = m_device->CreateDescriptorHeap(&rtvDescriptorHeapDesc, __uuidof(ID3D12DescriptorHeap), (void**)&m_renderTargetDescriptorHeap);
+	if (FAILED(result))
+	{
+		std::cout << "Failed to create descriptor heap to hold rendertargets.. " << std::endl;
+		return false;
+	}
+
+	UINT rtvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);	//Have to get the size of a descriptor from the device to not screw everything
+	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandle(m_renderTargetDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+
+	//Now time to fill out descriptor heap with rendertargets
+	for (int i = 0; i < 2; i++)
+	{
+		result = m_swapChain->GetBuffer(i, __uuidof(ID3D12Resource), (void**)&m_renderTargets[i]);
+		if (FAILED(result))
+		{
+			std::cout << "Failed to retrieve one of the swapchain buffers.. " << std::endl;
+			return false;
+		}
+
+		m_device->CreateRenderTargetView(m_renderTargets[i], nullptr, rtvDescriptorHandle);
+		rtvDescriptorHandle.Offset(1, rtvDescriptorSize);	//Offset so next RTV can be put in
+	}
+
+	//Now making a depth-stencil view
+	D3D12_DESCRIPTOR_HEAP_DESC dsvDescriptorHeapDesc = {};
+	dsvDescriptorHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+	dsvDescriptorHeapDesc.NumDescriptors = 1;
+	dsvDescriptorHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+
+	result = m_device->CreateDescriptorHeap(&dsvDescriptorHeapDesc, __uuidof(ID3D12DescriptorHeap), (void**)&m_depthStencilDescriptorHeap);
+	if (FAILED(result))
+	{
+		std::cout << "Failed to create descriptor heap to hold depth-stencil views.. " << std::endl;
+		return false;
+	}
+
+	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+	dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
+	dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+
+	D3D12_CLEAR_VALUE depthOptimizedClearValue = {};
+	depthOptimizedClearValue.Format = dsvDesc.Format;
+	depthOptimizedClearValue.DepthStencil.Depth = 1.0f;
+
+	//Creating a depth stencil texture using some d3dx defaults
+	result = m_device->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT), D3D12_HEAP_FLAG_NONE, &CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_D32_FLOAT, width, height, 1, 0, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL), D3D12_RESOURCE_STATE_DEPTH_WRITE, &depthOptimizedClearValue, __uuidof(ID3D12Resource), (void**)&m_depthStencilBuffer);
+	if (FAILED(result))
+	{
+		std::cout << "Failed to create depth buffer.. " << std::endl;
+		return false;
+	}
+
+	m_device->CreateDepthStencilView(m_depthStencilBuffer, &dsvDesc, m_depthStencilDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+
+	//Finally, create fences for synchronization
+	for (int i = 0; i < 2; i++)
+	{
+		result = m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, __uuidof(ID3D12Fence), (void**)&m_fences[i]);
+		if (FAILED(result))
+		{
+			std::cout << "Failed to create D3D Fence " << i << std::endl;
+			return false;
+		}
+
+		m_fenceValues[i] = 0;
+	}
+
+	fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+	if (!fenceEvent)
+		return false;
+
+
+
 	return true;
 }
 
@@ -82,6 +179,9 @@ bool D3D::synchronizeAndReset()
 		WaitForSingleObject(fenceEvent, INFINITE);
 	}
 	m_fenceValues[currentBuffer]++;
+
+	m_commandAllocators[currentBuffer]->Reset();
+	m_commandList->Reset(m_commandAllocators[currentBuffer], nullptr);
 	return true;
 }
 
@@ -92,6 +192,27 @@ bool D3D::executeAndPresent()
 	m_commandQueue->Signal(m_fences[this->getCurrentBuffer()], m_fenceValues[this->getCurrentBuffer()]);
 	m_swapChain->Present(0, 0);
 	return true;
+}
+
+void D3D::beginRenderPass(float r, float g, float b, float a)
+{
+	int currentBuffer = this->getCurrentBuffer();
+	UINT rtvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	float clearColor[4] = { r,g,b,a };
+
+	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[this->getCurrentBuffer()], D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
+	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandle(m_renderTargetDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), currentBuffer, rtvDescriptorSize);
+	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvDescriptorHandle(m_depthStencilDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+
+	m_commandList->OMSetRenderTargets(1, &rtvDescriptorHandle, FALSE, &dsvDescriptorHandle);
+	m_commandList->ClearRenderTargetView(rtvDescriptorHandle, clearColor, 0, nullptr);
+	m_commandList->ClearDepthStencilView(dsvDescriptorHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+	
+}
+
+void D3D::endRenderPass()
+{
+	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[this->getCurrentBuffer()], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 }
 
 int D3D::getCurrentBuffer()

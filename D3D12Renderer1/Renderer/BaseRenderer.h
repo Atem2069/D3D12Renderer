@@ -20,6 +20,12 @@ public:
 	//Specifies the current buffer that is free to be worked on
 	int getCurrentBuffer();
 
+	//Begins renderpass with default RTV and DSV. Sets a resource barrier to set it to the 'render-target' state
+	void beginRenderPass(float r, float g, float b, float a);
+
+	//Ends renderpass with default RTV and DSV. Sets a resource barrier to set it to the 'present' state, suitable for DXGI to work with
+	void endRenderPass();
+
 	ID3D12Device* getDevice();
 	ID3D12GraphicsCommandList* getCommandList();
 private:
@@ -31,6 +37,13 @@ private:
 	ID3D12CommandAllocator* m_commandAllocators[2];
 	ID3D12CommandQueue* m_commandQueue;
 	ID3D12GraphicsCommandList* m_commandList;
+
+	ID3D12DescriptorHeap* m_renderTargetDescriptorHeap;
+	ID3D12Resource* m_renderTargets[2];
+
+	ID3D12DescriptorHeap* m_depthStencilDescriptorHeap;
+	ID3D12Resource* m_depthStencilBuffer;
+
 };
 
 class D3DContext

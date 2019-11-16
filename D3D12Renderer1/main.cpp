@@ -34,8 +34,15 @@ int main()
 		return -1;
 	D3DContext::Register(m_context);
 
+	D3DContext::getCurrent()->executeAndSynchronize();
 	while (!glfwWindowShouldClose(m_window))
 	{
+		D3DContext::getCurrent()->synchronizeAndReset();
+
+		D3DContext::getCurrent()->beginRenderPass(1, 0, 0, 1);
+		D3DContext::getCurrent()->endRenderPass();
+
+		D3DContext::getCurrent()->executeAndPresent();
 		glfwPollEvents();
 	}
 	return 0;
