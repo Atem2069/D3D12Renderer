@@ -44,4 +44,9 @@ void BasicObject::draw()
 {
 	D3DContext::getCurrent()->getCommandList()->IASetVertexBuffers(0, 1, &m_vertexBufferView);
 	D3DContext::getCurrent()->getCommandList()->DrawInstanced(m_noVertices, 1, 0, 0);
+	if (!m_intermediateBufferDestroyed)
+	{
+		m_uploadBuffer->Release();
+		m_intermediateBufferDestroyed = true;
+	}
 }

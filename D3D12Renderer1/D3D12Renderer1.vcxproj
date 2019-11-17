@@ -128,12 +128,16 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Renderer\BaseRenderer.cpp" />
     <ClCompile Include="Renderer\BasicObject.cpp" />
+    <ClCompile Include="Renderer\ConstantBuffer.cpp" />
     <ClCompile Include="Renderer\RenderPipeline.cpp" />
+    <ClCompile Include="Renderer\ResourceHeap.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Renderer\BaseRenderer.h" />
     <ClInclude Include="Renderer\BasicObject.h" />
+    <ClInclude Include="Renderer\ConstantBuffer.h" />
     <ClInclude Include="Renderer\RenderPipeline.h" />
+    <ClInclude Include="Renderer\ResourceHeap.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\basicPixel.hlsl">

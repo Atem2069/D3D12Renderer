@@ -37,7 +37,7 @@ int main()
 	D3DContext::Register(m_context);
 
 	RenderPipeline m_pipeline;
-	if (!m_pipeline.initBasic(R"(Shaders\basicVertex.hlsl)", R"(Shaders\basicPixel.hlsl)"))
+	if(!m_pipeline.initWithDescriptorTables(R"(Shaders\basicVertex.hlsl)",R"(Shaders\basicPixel.hlsl)",nullptr,0,nullptr,0))
 		return -1;
 
 	Vertex vertices[3];
@@ -48,7 +48,7 @@ int main()
 	if (!m_basicObject.init(vertices, 3))
 		return false;
 
-	D3DContext::getCurrent()->executeAndSynchronize();
+	D3DContext::getCurrent()->executeAndSynchronize();	//Execute staging changes to CMD list.
 
 	double lastTime = 0, currentTime = glfwGetTime(), deltaTime = 1;
 	while (!glfwWindowShouldClose(m_window))

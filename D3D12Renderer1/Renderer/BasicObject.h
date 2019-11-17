@@ -14,4 +14,5 @@ private:
 	ID3D12Resource* m_vertexBuffer;
 	ID3D12Resource* m_uploadBuffer;
 	int m_noVertices;
+	bool m_intermediateBufferDestroyed = false;
 };

@@ -232,6 +232,11 @@ void D3D::endRenderPass()
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[this->getCurrentBuffer()], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 }
 
+void D3D::bindAllResourceHeaps(ID3D12DescriptorHeap** descriptorHeaps, int numDescriptorHeaps)
+{
+	m_commandList->SetDescriptorHeaps(numDescriptorHeaps, descriptorHeaps);
+}
+
 int D3D::getCurrentBuffer()
 {
 	return m_swapChain->GetCurrentBackBufferIndex();

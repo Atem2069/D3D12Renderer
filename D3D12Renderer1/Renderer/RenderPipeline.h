@@ -9,6 +9,9 @@ public:
 	//Will be extended in the future--don't exactly know how to design this for now so it can process basic geometry with no need for constant buffers or anything
 	bool initBasic(std::string vertexShaderPath, std::string pixelShaderPath);
 
+	//Initializes with descriptor tables
+	bool initWithDescriptorTables(std::string vertexShaderPath, std::string pixelShaderPath, D3D12_DESCRIPTOR_RANGE* descriptorRangesVTX, int numDescriptorRangesVTX, D3D12_DESCRIPTOR_RANGE* descriptorRangesPIX, int numDescriptorRangesPIX);
+	
 	void destroy();
 
 	void bind();

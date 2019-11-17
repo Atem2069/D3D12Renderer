@@ -34,6 +34,8 @@ public:
 	//Ends renderpass with default RTV and DSV. Sets a resource barrier to set it to the 'present' state, suitable for DXGI to work with
 	void endRenderPass();
 
+	void bindAllResourceHeaps(ID3D12DescriptorHeap** descriptorHeaps, int numDescriptorHeaps);
+
 	ID3D12Device* getDevice();
 	ID3D12GraphicsCommandList* getCommandList();
 private:
