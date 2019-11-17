@@ -1,6 +1,6 @@
 #include "ResourceHeap.h"
 
-bool ResourceHeap::init(int numDescriptors, int size)
+bool ResourceHeap::init(int numDescriptors)
 {
 	HRESULT result;
 
@@ -11,7 +11,7 @@ bool ResourceHeap::init(int numDescriptors, int size)
 		dhDesc.NodeMask = 0;
 		dhDesc.NumDescriptors = numDescriptors;
 		dhDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-		result = D3DContext::getCurrent()->getDevice()->CreateDescriptorHeap(&dhDesc, __uuidof(ID3D12DescriptorHeap), &m_descriptorHeaps[i]);
+		result = D3DContext::getCurrent()->getDevice()->CreateDescriptorHeap(&dhDesc, __uuidof(ID3D12DescriptorHeap), (void**)&m_descriptorHeaps[i]);
 		if (FAILED(result))
 		{
 			std::cout << "Failed to create descriptor heap " << i << std::endl;

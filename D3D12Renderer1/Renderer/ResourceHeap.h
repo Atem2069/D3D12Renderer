@@ -5,7 +5,7 @@
 class ResourceHeap
 {
 public:
-	bool init(int numDescriptors, int size);
+	bool init(int numDescriptors);
 	void destroy();
 
 	void bindDescriptorTable(int rootParameterIndex, int baseDescriptorIndex);
