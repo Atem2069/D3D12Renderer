@@ -7,6 +7,7 @@
 #include "Renderer/BaseRenderer.h"
 #include "Renderer/RenderPipeline.h"
 #include "Renderer/BasicObject.h"
+#include "Renderer/Object.h"
 #include "Renderer/ResourceHeap.h"
 #include "Renderer/ConstantBuffer.h"
 
@@ -72,7 +73,11 @@ int main()
 	vertices[2].position = XMFLOAT3(0.5f, -0.5f, 0.0f);
 	BasicObject m_basicObject;
 	if (!m_basicObject.init(vertices, 3))
-		return false;
+		return -1;
+
+	Object m_object;
+	if (!m_object.init(R"(Models\teapot.obj)"))
+		return -1;
 
 	ResourceHeap m_baseResourceHeap;
 	if (!m_baseResourceHeap.init(2))
@@ -113,7 +118,7 @@ int main()
 		D3DContext::getCurrent()->bindAllResourceHeaps(&baseResHeap, 1);
 		m_baseResourceHeap.bindDescriptorTable(0, m_vertexConstantBuffer.getDescriptorLocation());
 		m_baseResourceHeap.bindDescriptorTable(1, m_constantBuffer.getDescriptorLocation());
-		m_basicObject.draw();
+		m_object.draw();
 
 		D3DContext::getCurrent()->endRenderPass();
 

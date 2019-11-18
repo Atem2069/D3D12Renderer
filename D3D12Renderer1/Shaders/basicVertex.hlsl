@@ -17,5 +17,6 @@ VS_OUT main(VS_INPUT input)
 {
 	VS_OUT output;
 	output.position = float4(input.position * scale.xyz, 1.0f);
+	output.position.z += 1;
 	return output;
 }
