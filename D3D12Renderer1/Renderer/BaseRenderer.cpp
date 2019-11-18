@@ -41,7 +41,7 @@ bool D3D::init(int width, int height, HWND hwnd)
 	swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	swapChainDesc.SampleDesc.Count = 1;
 	swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
-	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
 	swapChainDesc.Scaling = DXGI_SCALING_NONE;
 
 	result = m_factory4->CreateSwapChainForHwnd(m_commandQueue, hwnd, &swapChainDesc, nullptr, nullptr, &swapChain1);
@@ -51,8 +51,7 @@ bool D3D::init(int width, int height, HWND hwnd)
 		return false;
 	}
 	
-	m_swapChain = static_cast<IDXGISwapChain3*>(swapChain1);
-
+	swapChain1->QueryInterface<IDXGISwapChain3>(&m_swapChain);
 	//Create command allocators and command list
 	for (int i = 0; i < 2; i++)
 	{

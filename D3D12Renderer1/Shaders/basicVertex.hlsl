@@ -8,9 +8,14 @@ struct VS_OUT
 	float4 position : SV_POSITION;
 };
 
+cbuffer vertexscale : register(b0)
+{
+	float4 scale;
+}
+
 VS_OUT main(VS_INPUT input)
 {
 	VS_OUT output;
-	output.position = float4(input.position, 1.0f);
+	output.position = float4(input.position * scale.xyz, 1.0f);
 	return output;
 }

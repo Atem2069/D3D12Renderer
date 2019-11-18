@@ -11,12 +11,17 @@
 #include "Renderer/ConstantBuffer.h"
 
 
-constexpr int Width = 500;
-constexpr int Height = 500;
+constexpr int Width = 800;
+constexpr int Height = 800;
 
 struct ColorConstBuffer
 {
-	XMFLOAT3 color;
+	XMFLOAT4 color;
+};
+
+struct VertexConstBuffer
+{
+	XMFLOAT4 scale;
 };
 
 int main()
@@ -50,8 +55,15 @@ int main()
 	pixColorDescriptor[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
 	pixColorDescriptor[0].RegisterSpace = 0;
 
+	D3D12_DESCRIPTOR_RANGE vtxDescriptor[1] = {};
+	vtxDescriptor[0].BaseShaderRegister = 0;
+	vtxDescriptor[0].NumDescriptors = 1;
+	vtxDescriptor[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+	vtxDescriptor[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+	vtxDescriptor[0].RegisterSpace = 0;
+
 	RenderPipeline m_pipeline;
-	if(!m_pipeline.initWithDescriptorTables(R"(Shaders\basicVertex.hlsl)",R"(Shaders\basicPixel.hlsl)",nullptr,0,pixColorDescriptor,1))
+	if(!m_pipeline.initWithDescriptorTables(R"(Shaders\basicVertex.hlsl)",R"(Shaders\basicPixel.hlsl)",vtxDescriptor,1,pixColorDescriptor,1))
 		return -1;
 
 	Vertex vertices[3];
@@ -63,17 +75,23 @@ int main()
 		return false;
 
 	ResourceHeap m_baseResourceHeap;
-	if (!m_baseResourceHeap.init(1))
+	if (!m_baseResourceHeap.init(2))
 		return -1;
 
 
 	ColorConstBuffer col = {};
-	col.color = XMFLOAT3(1, 1, 1);
+	col.color = XMFLOAT4(1, 1, 1,1);
 
 	ConstantBuffer m_constantBuffer;
 	if (!m_constantBuffer.init(&col, sizeof(ColorConstBuffer), m_baseResourceHeap))
 		return -1;
 
+	VertexConstBuffer vtxCbuffer = {};
+	vtxCbuffer.scale = XMFLOAT4(1, 1, 1, 1);
+
+	ConstantBuffer m_vertexConstantBuffer;
+	if (!m_vertexConstantBuffer.init(&vtxCbuffer, sizeof(VertexConstBuffer), m_baseResourceHeap))
+		return -1;
 
 	D3DContext::getCurrent()->executeAndSynchronize();	//Execute staging changes to CMD list.
 
@@ -84,17 +102,22 @@ int main()
 
 		D3DContext::getCurrent()->synchronizeAndReset();
 
+		//cpu updates
+		col.color.x = sin(glfwGetTime());
+		m_constantBuffer.update(&col, sizeof(ColorConstBuffer));
+
 		D3DContext::getCurrent()->beginRenderPass(0.564f, 0.8f, 0.976f, 1.f);
 	
 		m_pipeline.bind();
 		ID3D12DescriptorHeap* baseResHeap = m_baseResourceHeap.getCurrent();
 		D3DContext::getCurrent()->bindAllResourceHeaps(&baseResHeap, 1);
-		m_baseResourceHeap.bindDescriptorTable(0, 0);
+		m_baseResourceHeap.bindDescriptorTable(0, m_vertexConstantBuffer.getDescriptorLocation());
+		m_baseResourceHeap.bindDescriptorTable(1, m_constantBuffer.getDescriptorLocation());
 		m_basicObject.draw();
 
 		D3DContext::getCurrent()->endRenderPass();
 
-		if (!D3DContext::getCurrent()->executeAndPresent(true))
+		if (!D3DContext::getCurrent()->executeAndPresent(false))
 			glfwSetWindowShouldClose(m_window, GLFW_TRUE);
 
 		//Calculate deltatime
