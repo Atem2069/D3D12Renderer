@@ -65,6 +65,19 @@ bool RenderPipeline::initBasic(std::string vertexPath, std::string pixelPath)
 	inputLayoutDesc.NumElements = 1;
 	inputLayoutDesc.pInputElementDescs = inputLayouts;
 
+	D3D12_RASTERIZER_DESC rasterizerStateDesc = {};
+	rasterizerStateDesc.AntialiasedLineEnable = FALSE;
+	rasterizerStateDesc.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
+	rasterizerStateDesc.CullMode = D3D12_CULL_MODE_BACK;
+	rasterizerStateDesc.DepthBias = 0;
+	rasterizerStateDesc.DepthBiasClamp = 0;
+	rasterizerStateDesc.DepthClipEnable = FALSE;
+	rasterizerStateDesc.FillMode = D3D12_FILL_MODE_SOLID;
+	rasterizerStateDesc.ForcedSampleCount = 0;
+	rasterizerStateDesc.FrontCounterClockwise = FALSE;
+	rasterizerStateDesc.MultisampleEnable = FALSE;
+	rasterizerStateDesc.SlopeScaledDepthBias = 0;
+
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC pipelineStateDesc = {};
 	pipelineStateDesc.VS = vertexShader;
 	pipelineStateDesc.PS = pixelShader;
@@ -72,7 +85,7 @@ bool RenderPipeline::initBasic(std::string vertexPath, std::string pixelPath)
 	pipelineStateDesc.InputLayout = inputLayoutDesc;
 	pipelineStateDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 	pipelineStateDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-	pipelineStateDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+	pipelineStateDesc.RasterizerState = rasterizerStateDesc;
 	pipelineStateDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
 	pipelineStateDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 	pipelineStateDesc.NumRenderTargets = 1;
@@ -114,11 +127,13 @@ bool RenderPipeline::initWithDescriptorTables(std::string vertexPath, std::strin
 		{
 			rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 			rootParameters[0].DescriptorTable = vtxDescriptorTable;
+			m_vertexRangeBinding = 0;
 		}
 		else if(numDescriptorRangesPIX)
 		{
 			rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 			rootParameters[0].DescriptorTable = pixDescriptorTable;
+			m_pixelRangeBinding = 0;
 		}
 	}
 
@@ -131,6 +146,9 @@ bool RenderPipeline::initWithDescriptorTables(std::string vertexPath, std::strin
 		rootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 		rootParameters[1].DescriptorTable = pixDescriptorTable;
 		rootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+		m_vertexRangeBinding = 0;
+		m_pixelRangeBinding = 1;
 	}
 
 	CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
@@ -184,7 +202,7 @@ bool RenderPipeline::initWithDescriptorTables(std::string vertexPath, std::strin
 	pixelShader.pShaderBytecode = pixelBytecode->GetBufferPointer();
 	pixelShader.BytecodeLength = pixelBytecode->GetBufferSize();
 
-	D3D12_INPUT_ELEMENT_DESC inputLayouts[1];
+	D3D12_INPUT_ELEMENT_DESC inputLayouts[2];
 	inputLayouts[0].AlignedByteOffset = 0;
 	inputLayouts[0].Format = DXGI_FORMAT_R32G32B32_FLOAT;
 	inputLayouts[0].InputSlot = 0;
@@ -193,9 +211,30 @@ bool RenderPipeline::initWithDescriptorTables(std::string vertexPath, std::strin
 	inputLayouts[0].SemanticIndex = 0;
 	inputLayouts[0].SemanticName = "POSITION";
 
+	inputLayouts[1].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+	inputLayouts[1].Format = DXGI_FORMAT_R32G32B32_FLOAT;
+	inputLayouts[1].InputSlot = 0;
+	inputLayouts[1].InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
+	inputLayouts[1].InstanceDataStepRate = 0;
+	inputLayouts[1].SemanticIndex = 0;
+	inputLayouts[1].SemanticName = "NORMAL";
+
 	D3D12_INPUT_LAYOUT_DESC inputLayoutDesc = {};
-	inputLayoutDesc.NumElements = 1;
+	inputLayoutDesc.NumElements = 2;
 	inputLayoutDesc.pInputElementDescs = inputLayouts;
+
+	D3D12_RASTERIZER_DESC rasterizerStateDesc = {};
+	rasterizerStateDesc.AntialiasedLineEnable = FALSE;
+	rasterizerStateDesc.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
+	rasterizerStateDesc.CullMode = D3D12_CULL_MODE_BACK;
+	rasterizerStateDesc.DepthBias = 0;
+	rasterizerStateDesc.DepthBiasClamp = 0;
+	rasterizerStateDesc.DepthClipEnable = FALSE;
+	rasterizerStateDesc.FillMode = D3D12_FILL_MODE_SOLID;
+	rasterizerStateDesc.ForcedSampleCount = 0;
+	rasterizerStateDesc.FrontCounterClockwise = FALSE;
+	rasterizerStateDesc.MultisampleEnable = FALSE;
+	rasterizerStateDesc.SlopeScaledDepthBias = 0;
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC pipelineStateDesc = {};
 	pipelineStateDesc.VS = vertexShader;
@@ -204,7 +243,7 @@ bool RenderPipeline::initWithDescriptorTables(std::string vertexPath, std::strin
 	pipelineStateDesc.InputLayout = inputLayoutDesc;
 	pipelineStateDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 	pipelineStateDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-	pipelineStateDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+	pipelineStateDesc.RasterizerState = rasterizerStateDesc;
 	pipelineStateDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
 	pipelineStateDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 	pipelineStateDesc.NumRenderTargets = 1;
@@ -232,4 +271,14 @@ void RenderPipeline::bind()
 	D3DContext::getCurrent()->getCommandList()->SetPipelineState(m_pipelineState);
 	D3DContext::getCurrent()->getCommandList()->SetGraphicsRootSignature(m_rootSignature);
 	D3DContext::getCurrent()->getCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+}
+
+int RenderPipeline::getVertexRangeBinding()
+{
+	return m_vertexRangeBinding;
+}
+
+int RenderPipeline::getPixelRangeBinding()
+{
+	return m_pixelRangeBinding;
 }

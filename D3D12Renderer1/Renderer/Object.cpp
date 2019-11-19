@@ -29,7 +29,9 @@ bool Object::init(std::string filePath)
 			tempVertex.position.y = aiMesh->mVertices[j].y;
 			tempVertex.position.z = aiMesh->mVertices[j].z;
 
-			//rest soon:tm:
+			tempVertex.normal.x = aiMesh->mNormals[j].x;
+			tempVertex.normal.y = aiMesh->mNormals[j].y;
+			tempVertex.normal.z = aiMesh->mNormals[j].z;
 
 			m_vertices.push_back(tempVertex);
 		}

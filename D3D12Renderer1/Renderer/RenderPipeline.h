@@ -15,7 +15,11 @@ public:
 	void destroy();
 
 	void bind();
+
+	int getVertexRangeBinding();
+	int getPixelRangeBinding();
 private:
+	int m_vertexRangeBinding=-1,m_pixelRangeBinding=-1;
 	ID3D12RootSignature* m_rootSignature;
 	ID3D12PipelineState* m_pipelineState;
 };

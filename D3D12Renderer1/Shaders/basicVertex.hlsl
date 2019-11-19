@@ -1,22 +1,28 @@
 struct VS_INPUT
 {
 	float3 position : POSITION;
+	float3 normal : NORMAL;
 };
 
 struct VS_OUT
 {
 	float4 position : SV_POSITION;
+	float3 normal : NORMAL;
 };
 
-cbuffer vertexscale : register(b0)
+cbuffer camera : register(b0)
 {
-	float4 scale;
+	matrix projection;
+	matrix view;
 }
 
 VS_OUT main(VS_INPUT input)
 {
 	VS_OUT output;
-	output.position = float4(input.position * scale.xyz, 1.0f);
-	output.position.z += 1;
+
+	matrix projView = mul(projection, view);;
+
+	output.position = mul(projView,float4(input.position, 1.0f));
+	output.normal = input.normal;
 	return output;
 }
