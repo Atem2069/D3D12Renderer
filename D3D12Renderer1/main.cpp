@@ -72,16 +72,9 @@ int main()
 	ImGui_ImplDX12_Init(D3DContext::getCurrent()->getDevice(), 2, DXGI_FORMAT_R8G8B8A8_UNORM, baseResHeapDescHandle, baseResHeapDescGPUHandle);
 
 
-	D3D12_DESCRIPTOR_RANGE vertexDescriptorRange = {};
-	vertexDescriptorRange.BaseShaderRegister = 0;
-	vertexDescriptorRange.NumDescriptors = 2;
-	vertexDescriptorRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-	vertexDescriptorRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-	vertexDescriptorRange.RegisterSpace = 0;
-
-	D3D12_ROOT_DESCRIPTOR_TABLE vtxDescriptorTable = {};
-	vtxDescriptorTable.NumDescriptorRanges = 1;
-	vtxDescriptorTable.pDescriptorRanges = &vertexDescriptorRange;
+	D3D12_ROOT_DESCRIPTOR m_cameraDescriptor = {};
+	m_cameraDescriptor.RegisterSpace = 0;;
+	m_cameraDescriptor.ShaderRegister = 0;
 
 	D3D12_ROOT_DESCRIPTOR m_lightConstDescriptor = {};
 	m_lightConstDescriptor.RegisterSpace = 0;
@@ -89,8 +82,8 @@ int main()
 
 
 	D3D12_ROOT_PARAMETER m_rootParameters[2] = {};
-	m_rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-	m_rootParameters[0].DescriptorTable = vtxDescriptorTable;
+	m_rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	m_rootParameters[0].Descriptor = m_cameraDescriptor;
 	m_rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 
 	m_rootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
@@ -108,10 +101,6 @@ int main()
 	if (!m_object2.init(R"(Models\nanosuit\nanosuit.obj)"))
 		return -1;
 
-	ResourceHeap m_baseResourceHeap;
-	if (!m_baseResourceHeap.init(64))
-		return -1;
-
 	BasicCamera m_basicCamera = {};
 	XMVECTOR cameraPosition = XMVectorSet(0, 10, -150, 1);
 	XMVECTOR cameraEye = XMVectorSet(0, 0, 1, 1);
@@ -119,13 +108,13 @@ int main()
 	m_basicCamera.view = XMMatrixLookAtLH(cameraPosition, cameraPosition + cameraEye, XMVectorSet(0, 1, 0, 1));
 
 	ConstantBuffer m_cameraBuffer;;
-	if (!m_cameraBuffer.init(&m_basicCamera, sizeof(BasicCamera), m_baseResourceHeap))
+	if (!m_cameraBuffer.init(&m_basicCamera, sizeof(BasicCamera)))
 		return -1;
 
 	LightBuffer m_light = {};
 	m_light.lightDirection = XMFLOAT4(-250, -3000, 0, 0);
 	ConstantBuffer m_lightBuffer;
-	if (!m_lightBuffer.init(&m_light, sizeof(LightBuffer), m_baseResourceHeap))
+	if (!m_lightBuffer.init(&m_light, sizeof(LightBuffer)))
 		return -1;
 
 	D3DContext::getCurrent()->executeAndSynchronize();	//Execute staging changes to CMD list.
@@ -164,13 +153,11 @@ int main()
 		m_lightBuffer.update(&m_light, sizeof(LightBuffer));
 	
 		m_pipeline.bind();
-		ID3D12DescriptorHeap* baseResHeaps[1] = { m_baseResourceHeap.getCurrent()};
-		D3DContext::getCurrent()->bindAllResourceHeaps(baseResHeaps, 1);
-		m_baseResourceHeap.bindDescriptorTable(0, m_cameraBuffer.getDescriptorLocation());
+		m_cameraBuffer.bind(0);
 		m_lightBuffer.bind(1);
 		m_object.draw();
 		m_object2.draw();
-		baseResHeaps[0] = m_imguiResourceHeap.getCurrent(0);
+		ID3D12DescriptorHeap* baseResHeaps[1] = { m_imguiResourceHeap.getCurrent(0) };
 		D3DContext::getCurrent()->bindAllResourceHeaps(baseResHeaps, 1);
 		ImGui::Render();
 		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), D3DContext::getCurrent()->getCommandList());

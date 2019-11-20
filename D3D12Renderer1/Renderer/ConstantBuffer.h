@@ -6,6 +6,7 @@
 class ConstantBuffer
 {
 public:
+	bool init(void* data, size_t dataSize);
 	bool init(void* data, size_t dataSize, ResourceHeap& resourceHeap);
 	void destroy();
 
