@@ -26,7 +26,6 @@ bool ConstantBuffer::init(void* data, size_t dataSize, ResourceHeap& resourceHea
 		cbvDesc.SizeInBytes = (dataSize + 255) & ~255;
 		cbvDesc.BufferLocation = m_constantBufferUploadHeaps[i]->GetGPUVirtualAddress();
 		D3DContext::getCurrent()->getDevice()->CreateConstantBufferView(&cbvDesc, resourceHeapHandle);
-
 		CD3DX12_RANGE mapRange(0, 0);
 		result = m_constantBufferUploadHeaps[i]->Map(0, &mapRange, (void**)&m_constantBufferGPUAddresses[i]);
 		if (FAILED(result))
@@ -50,6 +49,11 @@ void ConstantBuffer::destroy()
 void ConstantBuffer::update(void* data, size_t dataSize)
 {
 	memcpy(m_constantBufferGPUAddresses[D3DContext::getCurrent()->getCurrentBuffer()], data, dataSize);
+}
+
+void ConstantBuffer::bind(int rootParameterIndex)
+{
+	D3DContext::getCurrent()->getCommandList()->SetGraphicsRootConstantBufferView(rootParameterIndex, m_constantBufferUploadHeaps[D3DContext::getCurrent()->getCurrentBuffer()]->GetGPUVirtualAddress());
 }
 
 int ConstantBuffer::getDescriptorLocation()

@@ -27,6 +27,11 @@ struct BasicCamera
 	XMMATRIX view;
 };
 
+struct LightBuffer
+{
+	XMFLOAT4 lightDirection;
+};
+
 int main()
 {
 	if (!glfwInit())
@@ -78,17 +83,26 @@ int main()
 	vtxDescriptorTable.NumDescriptorRanges = 1;
 	vtxDescriptorTable.pDescriptorRanges = &vertexDescriptorRange;
 
-	D3D12_ROOT_PARAMETER m_rootParameters[1] = {};
+	D3D12_ROOT_DESCRIPTOR m_lightConstDescriptor = {};
+	m_lightConstDescriptor.RegisterSpace = 0;
+	m_lightConstDescriptor.ShaderRegister = 0;
+
+
+	D3D12_ROOT_PARAMETER m_rootParameters[2] = {};
 	m_rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 	m_rootParameters[0].DescriptorTable = vtxDescriptorTable;
 	m_rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 
+	m_rootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	m_rootParameters[1].Descriptor = m_lightConstDescriptor;
+	m_rootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
 	RenderPipeline m_pipeline;
-	if(!m_pipeline.initWithRootParameters(R"(Shaders\basicVertex.hlsl)",R"(Shaders\basicPixel.hlsl)",m_rootParameters,1))
+	if(!m_pipeline.initWithRootParameters(R"(Shaders\basicVertex.hlsl)",R"(Shaders\basicPixel.hlsl)",m_rootParameters,2))
 		return -1;
 
 	Object m_object;
-	if (!m_object.init(R"(Models\sanmiguel\san-miguel-low-poly.obj)"))
+	if (!m_object.init(R"(Models\sponza\sponza.obj)"))
 		return -1;
 	Object m_object2;
 	if (!m_object2.init(R"(Models\nanosuit\nanosuit.obj)"))
@@ -99,13 +113,19 @@ int main()
 		return -1;
 
 	BasicCamera m_basicCamera = {};
-	XMVECTOR cameraPosition = XMVectorSet(0, 10, -15, 1);
+	XMVECTOR cameraPosition = XMVectorSet(0, 10, -150, 1);
 	XMVECTOR cameraEye = XMVectorSet(0, 0, 1, 1);
-	m_basicCamera.projection = XMMatrixPerspectiveFovLH(XMConvertToRadians(60.0f), (float)Width / (float)Height, 1.0f, 10000.0f);
+	m_basicCamera.projection = XMMatrixPerspectiveFovLH(XMConvertToRadians(60.0f), (float)Width / (float)Height, .1f, 10000.0f);
 	m_basicCamera.view = XMMatrixLookAtLH(cameraPosition, cameraPosition + cameraEye, XMVectorSet(0, 1, 0, 1));
 
 	ConstantBuffer m_cameraBuffer;;
 	if (!m_cameraBuffer.init(&m_basicCamera, sizeof(BasicCamera), m_baseResourceHeap))
+		return -1;
+
+	LightBuffer m_light = {};
+	m_light.lightDirection = XMFLOAT4(-250, -3000, 0, 0);
+	ConstantBuffer m_lightBuffer;
+	if (!m_lightBuffer.init(&m_light, sizeof(LightBuffer), m_baseResourceHeap))
 		return -1;
 
 	D3DContext::getCurrent()->executeAndSynchronize();	//Execute staging changes to CMD list.
@@ -129,17 +149,25 @@ int main()
 			ImGui::Text("Current Face Count:: %d", m_object.m_faces + m_object2.m_faces);
 		}
 		ImGui::End();
+		
+		ImGui::Begin("Renderer Properties");
+		{
+			ImGui::DragFloat3("Light direction", (float*)&m_light.lightDirection);
+		}
+		ImGui::End();
 
 		D3DContext::getCurrent()->beginRenderPass(0.564f, 0.8f, 0.976f, 1.f);
 
 		//CPU update
 		m_basicCamera.view = XMMatrixLookAtLH(cameraPosition, cameraPosition + cameraEye, XMVectorSet(0, 1, 0, 1));
 		m_cameraBuffer.update(&m_basicCamera, sizeof(BasicCamera));
+		m_lightBuffer.update(&m_light, sizeof(LightBuffer));
 	
 		m_pipeline.bind();
 		ID3D12DescriptorHeap* baseResHeaps[1] = { m_baseResourceHeap.getCurrent()};
 		D3DContext::getCurrent()->bindAllResourceHeaps(baseResHeaps, 1);
-		m_baseResourceHeap.bindDescriptorTable(0, 0);
+		m_baseResourceHeap.bindDescriptorTable(0, m_cameraBuffer.getDescriptorLocation());
+		m_lightBuffer.bind(1);
 		m_object.draw();
 		m_object2.draw();
 		baseResHeaps[0] = m_imguiResourceHeap.getCurrent(0);
