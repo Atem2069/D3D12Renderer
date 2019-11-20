@@ -84,7 +84,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\Henry\source\D3DRenderer\D3D12Renderer1\extlib\imgui-master;C:\Users\Henry\source\D3DRenderer\D3D12Renderer1\extlib\assimp\include;C:\Users\Henry\source\D3DRenderer\D3D12Renderer1\extlib\glfw-3.2.1\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\Henry\source\D3DRenderer\D3D12Renderer1\extlib;C:\Users\Henry\source\D3DRenderer\D3D12Renderer1\extlib\imgui-master;C:\Users\Henry\source\D3DRenderer\D3D12Renderer1\extlib\assimp\include;C:\Users\Henry\source\D3DRenderer\D3D12Renderer1\extlib\glfw-3.2.1\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -114,7 +114,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\Henry\source\D3DRenderer\D3D12Renderer1\extlib\imgui-master;C:\Users\Henry\source\D3DRenderer\D3D12Renderer1\extlib\assimp\include;C:\Users\Henry\source\D3DRenderer\D3D12Renderer1\extlib\glfw-3.2.1\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\Henry\source\D3DRenderer\D3D12Renderer1\extlib;C:\Users\Henry\source\D3DRenderer\D3D12Renderer1\extlib\imgui-master;C:\Users\Henry\source\D3DRenderer\D3D12Renderer1\extlib\assimp\include;C:\Users\Henry\source\D3DRenderer\D3D12Renderer1\extlib\glfw-3.2.1\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -139,6 +139,7 @@
     <ClCompile Include="Renderer\Object.cpp" />
     <ClCompile Include="Renderer\RenderPipeline.cpp" />
     <ClCompile Include="Renderer\ResourceHeap.cpp" />
+    <ClCompile Include="Renderer\Texturing.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\extlib\imgui-master\imconfig.h" />
@@ -156,6 +157,7 @@
     <ClInclude Include="Renderer\Object.h" />
     <ClInclude Include="Renderer\RenderPipeline.h" />
     <ClInclude Include="Renderer\ResourceHeap.h" />
+    <ClInclude Include="Renderer\Texturing.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\basicPixel.hlsl">

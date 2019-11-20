@@ -63,6 +63,9 @@
     <ClCompile Include="..\extlib\imgui-master\imgui_impl_glfw.cpp">
       <Filter>imgui</Filter>
     </ClCompile>
+    <ClCompile Include="Renderer\Texturing.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Renderer\BaseRenderer.h">
@@ -109,6 +112,9 @@
     </ClInclude>
     <ClInclude Include="..\extlib\imgui-master\imgui_impl_glfw.h">
       <Filter>imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\Texturing.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -73,7 +73,7 @@ int main()
 
 
 	D3D12_ROOT_DESCRIPTOR m_cameraDescriptor = {};
-	m_cameraDescriptor.RegisterSpace = 0;;
+	m_cameraDescriptor.RegisterSpace = 0;
 	m_cameraDescriptor.ShaderRegister = 0;
 
 	D3D12_ROOT_DESCRIPTOR m_lightConstDescriptor = {};
@@ -95,16 +95,16 @@ int main()
 		return -1;
 
 	Object m_object;
-	if (!m_object.init(R"(Models\sponza\sponza.obj)"))
+	if (!m_object.init(R"(Models\sanmiguel\san-miguel-low-poly.obj)"))
 		return -1;
 	Object m_object2;
 	if (!m_object2.init(R"(Models\nanosuit\nanosuit.obj)"))
 		return -1;
 
 	BasicCamera m_basicCamera = {};
-	XMVECTOR cameraPosition = XMVectorSet(0, 10, -150, 1);
+	XMVECTOR cameraPosition = XMVectorSet(0, 0, 0, 1);
 	XMVECTOR cameraEye = XMVectorSet(0, 0, 1, 1);
-	m_basicCamera.projection = XMMatrixPerspectiveFovLH(XMConvertToRadians(60.0f), (float)Width / (float)Height, .1f, 10000.0f);
+	m_basicCamera.projection = XMMatrixPerspectiveFovLH(XMConvertToRadians(60.0f), (float)Width / (float)Height, 1.0f, 10000.0f);
 	m_basicCamera.view = XMMatrixLookAtLH(cameraPosition, cameraPosition + cameraEye, XMVectorSet(0, 1, 0, 1));
 
 	ConstantBuffer m_cameraBuffer;;
@@ -121,7 +121,7 @@ int main()
 
 	double lastTime = 0, currentTime = glfwGetTime(), deltaTime = 1;
 	float pitch = 0, yaw = 0;
-	float cameraSpeed = 250.0f;
+	float cameraSpeed = 25.0f;
 	while (!glfwWindowShouldClose(m_window))
 	{
 		glfwPollEvents();
@@ -163,8 +163,6 @@ int main()
 		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), D3DContext::getCurrent()->getCommandList());
 
 		D3DContext::getCurrent()->endRenderPass();
-
-
 		if (!D3DContext::getCurrent()->executeAndPresent(false))
 			glfwSetWindowShouldClose(m_window, GLFW_TRUE);
 
