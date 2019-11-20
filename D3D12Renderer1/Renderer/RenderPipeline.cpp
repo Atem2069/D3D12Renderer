@@ -103,56 +103,11 @@ bool RenderPipeline::initBasic(std::string vertexPath, std::string pixelPath)
 	return true;
 }
 
-bool RenderPipeline::initWithDescriptorTables(std::string vertexPath, std::string pixelPath, D3D12_DESCRIPTOR_RANGE* descriptorRangesVTX, int numDescriptorRangesVTX, D3D12_DESCRIPTOR_RANGE* descriptorRangesPIX, int numDescriptorRangesPIX)
+bool RenderPipeline::initWithRootParameters(std::string vertexPath, std::string pixelPath, D3D12_ROOT_PARAMETER* rootParameters, int numRootParameters)
 {
-	HRESULT result;
-	D3D12_ROOT_DESCRIPTOR_TABLE vtxDescriptorTable = {};
-	vtxDescriptorTable.NumDescriptorRanges = numDescriptorRangesVTX;
-	vtxDescriptorTable.pDescriptorRanges = descriptorRangesVTX;
-
-	D3D12_ROOT_DESCRIPTOR_TABLE pixDescriptorTable = {};
-	pixDescriptorTable.NumDescriptorRanges = numDescriptorRangesPIX;
-	pixDescriptorTable.pDescriptorRanges = descriptorRangesPIX;
-
-	int numRootParametersToProcess = 2;
-	D3D12_ROOT_PARAMETER rootParameters[2] = {};
-	if (!numDescriptorRangesVTX && !numDescriptorRangesPIX)
-		numRootParametersToProcess = 0;
-	else if (!numDescriptorRangesVTX || !numDescriptorRangesPIX)
-	{
-		numRootParametersToProcess = 1;
-		rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-
-		if (numDescriptorRangesVTX)
-		{
-			rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-			rootParameters[0].DescriptorTable = vtxDescriptorTable;
-			m_vertexRangeBinding = 0;
-		}
-		else if(numDescriptorRangesPIX)
-		{
-			rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-			rootParameters[0].DescriptorTable = pixDescriptorTable;
-			m_pixelRangeBinding = 0;
-		}
-	}
-
-	else
-	{
-		rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-		rootParameters[0].DescriptorTable = vtxDescriptorTable;
-		rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-
-		rootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-		rootParameters[1].DescriptorTable = pixDescriptorTable;
-		rootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-
-		m_vertexRangeBinding = 0;
-		m_pixelRangeBinding = 1;
-	}
-
+	HRESULT result;;
 	CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
-	rootSignatureDesc.Init(numRootParametersToProcess, rootParameters, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+	rootSignatureDesc.Init(numRootParameters, rootParameters, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 	ID3DBlob* signature;
 	result = D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, nullptr);
@@ -229,7 +184,7 @@ bool RenderPipeline::initWithDescriptorTables(std::string vertexPath, std::strin
 	rasterizerStateDesc.CullMode = D3D12_CULL_MODE_BACK;
 	rasterizerStateDesc.DepthBias = 0;
 	rasterizerStateDesc.DepthBiasClamp = 0;
-	rasterizerStateDesc.DepthClipEnable = FALSE;
+	rasterizerStateDesc.DepthClipEnable = TRUE;
 	rasterizerStateDesc.FillMode = D3D12_FILL_MODE_SOLID;
 	rasterizerStateDesc.ForcedSampleCount = 0;
 	rasterizerStateDesc.FrontCounterClockwise = FALSE;

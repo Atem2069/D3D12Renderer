@@ -44,6 +44,7 @@ bool Object::init(std::string filePath)
 			for (unsigned int k = 0; k < face.mNumIndices; k++)
 				m_indices.push_back(face.mIndices[k]);
 			noIndices += face.mNumIndices;
+			m_faces++;
 		}
 
 		tempMesh.m_baseVertexLocation = globalVertexBase;

@@ -23,6 +23,8 @@ public:
 
 	void draw();
 
+	int m_faces = 0;
+
 private:
 	//VBO
 	D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;

@@ -13,6 +13,10 @@
 #include "Renderer/ResourceHeap.h"
 #include "Renderer/ConstantBuffer.h"
 
+#include <imgui.h>
+#include <imgui_impl_dx12.h>
+#include <imgui_impl_glfw.h>
+
 
 constexpr int Width = 1600;
 constexpr int Height = 900;
@@ -47,19 +51,47 @@ int main()
 		return -1;
 	D3DContext::Register(m_context);
 
-	D3D12_DESCRIPTOR_RANGE cameraDescriptorRange = {};
-	cameraDescriptorRange.BaseShaderRegister = 0;
-	cameraDescriptorRange.NumDescriptors = 1;
-	cameraDescriptorRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-	cameraDescriptorRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-	cameraDescriptorRange.RegisterSpace = 0;
+	ImGui::CreateContext();
+	ImGui::StyleColorsClassic();
+
+	ResourceHeap m_imguiResourceHeap;
+	if (!m_imguiResourceHeap.init(64))
+		return -1;
+
+	CD3DX12_CPU_DESCRIPTOR_HANDLE baseResHeapDescHandle(m_imguiResourceHeap.getCurrent(0)->GetCPUDescriptorHandleForHeapStart());
+	baseResHeapDescHandle.Offset(m_imguiResourceHeap.numBoundDescriptors, D3DContext::getCurrent()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
+
+	CD3DX12_GPU_DESCRIPTOR_HANDLE baseResHeapDescGPUHandle(m_imguiResourceHeap.getCurrent(0)->GetGPUDescriptorHandleForHeapStart());;
+	baseResHeapDescGPUHandle.Offset(m_imguiResourceHeap.numBoundDescriptors, D3DContext::getCurrent()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
+	ImGui_ImplGlfw_InitForVulkan(m_window, true);
+	ImGui_ImplDX12_Init(D3DContext::getCurrent()->getDevice(), 2, DXGI_FORMAT_R8G8B8A8_UNORM, baseResHeapDescHandle, baseResHeapDescGPUHandle);
+
+
+	D3D12_DESCRIPTOR_RANGE vertexDescriptorRange = {};
+	vertexDescriptorRange.BaseShaderRegister = 0;
+	vertexDescriptorRange.NumDescriptors = 2;
+	vertexDescriptorRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+	vertexDescriptorRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+	vertexDescriptorRange.RegisterSpace = 0;
+
+	D3D12_ROOT_DESCRIPTOR_TABLE vtxDescriptorTable = {};
+	vtxDescriptorTable.NumDescriptorRanges = 1;
+	vtxDescriptorTable.pDescriptorRanges = &vertexDescriptorRange;
+
+	D3D12_ROOT_PARAMETER m_rootParameters[1] = {};
+	m_rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	m_rootParameters[0].DescriptorTable = vtxDescriptorTable;
+	m_rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 
 	RenderPipeline m_pipeline;
-	if(!m_pipeline.initWithDescriptorTables(R"(Shaders\basicVertex.hlsl)",R"(Shaders\basicPixel.hlsl)",&cameraDescriptorRange,1,nullptr,0))
+	if(!m_pipeline.initWithRootParameters(R"(Shaders\basicVertex.hlsl)",R"(Shaders\basicPixel.hlsl)",m_rootParameters,1))
 		return -1;
 
 	Object m_object;
-	if (!m_object.init(R"(Models\sponza\sponza.obj)"))
+	if (!m_object.init(R"(Models\sanmiguel\san-miguel-low-poly.obj)"))
+		return -1;
+	Object m_object2;
+	if (!m_object2.init(R"(Models\nanosuit\nanosuit.obj)"))
 		return -1;
 
 	ResourceHeap m_baseResourceHeap;
@@ -80,11 +112,23 @@ int main()
 
 	double lastTime = 0, currentTime = glfwGetTime(), deltaTime = 1;
 	float pitch = 0, yaw = 0;
+	float cameraSpeed = 250.0f;
 	while (!glfwWindowShouldClose(m_window))
 	{
 		glfwPollEvents();
 
 		D3DContext::getCurrent()->synchronizeAndReset();
+
+		ImGui_ImplDX12_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+
+		ImGui::Begin("Renderer Info-Direct3D 12");
+		{
+			ImGui::Text("Current FPS:: %.2f", 1 / deltaTime);
+			ImGui::Text("Current Face Count:: %d", m_object.m_faces + m_object2.m_faces);
+		}
+		ImGui::End();
 
 		D3DContext::getCurrent()->beginRenderPass(0.564f, 0.8f, 0.976f, 1.f);
 
@@ -93,28 +137,34 @@ int main()
 		m_cameraBuffer.update(&m_basicCamera, sizeof(BasicCamera));
 	
 		m_pipeline.bind();
-		ID3D12DescriptorHeap* baseResHeap = m_baseResourceHeap.getCurrent();
-		D3DContext::getCurrent()->bindAllResourceHeaps(&baseResHeap, 1);
-		m_baseResourceHeap.bindDescriptorTable(m_pipeline.getVertexRangeBinding(), 0);
+		ID3D12DescriptorHeap* baseResHeaps[1] = { m_baseResourceHeap.getCurrent()};
+		D3DContext::getCurrent()->bindAllResourceHeaps(baseResHeaps, 1);
+		m_baseResourceHeap.bindDescriptorTable(0, 0);
 		m_object.draw();
+		m_object2.draw();
+		baseResHeaps[0] = m_imguiResourceHeap.getCurrent(0);
+		D3DContext::getCurrent()->bindAllResourceHeaps(baseResHeaps, 1);
+		ImGui::Render();
+		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), D3DContext::getCurrent()->getCommandList());
 
 		D3DContext::getCurrent()->endRenderPass();
+
 
 		if (!D3DContext::getCurrent()->executeAndPresent(false))
 			glfwSetWindowShouldClose(m_window, GLFW_TRUE);
 
 		if (glfwGetKey(m_window, GLFW_KEY_W) == GLFW_PRESS)
-			cameraPosition += cameraEye * 250.0f * deltaTime;
+			cameraPosition += cameraEye * cameraSpeed * deltaTime;
 		if (glfwGetKey(m_window, GLFW_KEY_S) == GLFW_PRESS)
-			cameraPosition -= cameraEye * 250.0f * deltaTime;
+			cameraPosition -= cameraEye * cameraSpeed * deltaTime;
 		if (glfwGetKey(m_window, GLFW_KEY_A) == GLFW_PRESS)
-			cameraPosition += XMVector3Cross(cameraEye, XMVectorSet(0, 1, 0, 1)) * 250.0f * deltaTime;
+			cameraPosition += XMVector3Cross(cameraEye, XMVectorSet(0, 1, 0, 1)) * cameraSpeed * deltaTime;
 		if (glfwGetKey(m_window, GLFW_KEY_D) == GLFW_PRESS)
-			cameraPosition -= XMVector3Cross(cameraEye, XMVectorSet(0, 1, 0, 1)) * 250.0f * deltaTime;
+			cameraPosition -= XMVector3Cross(cameraEye, XMVectorSet(0, 1, 0, 1)) * cameraSpeed * deltaTime;
 		if (glfwGetKey(m_window, GLFW_KEY_SPACE))
-			cameraPosition += XMVectorSet(0, 1, 0, 1) * 250.0f * deltaTime;
+			cameraPosition += XMVectorSet(0, 1, 0, 1) * cameraSpeed * deltaTime;
 		if (glfwGetKey(m_window, GLFW_KEY_LEFT_SHIFT))
-			cameraPosition -= XMVectorSet(0, 1, 0, 1) * 250.0f * deltaTime;
+			cameraPosition -= XMVectorSet(0, 1, 0, 1) * cameraSpeed * deltaTime;
 		if (glfwGetKey(m_window, GLFW_KEY_LEFT) == GLFW_PRESS)
 			yaw += 0.5f * deltaTime * 250.0f;
 		if (glfwGetKey(m_window, GLFW_KEY_RIGHT) == GLFW_PRESS)
@@ -130,9 +180,6 @@ int main()
 		deltaTime = currentTime - lastTime;
 		lastTime = currentTime;
 		currentTime = glfwGetTime();
-		char fps[10];
-		_itoa(1 / deltaTime, fps, 10);
-		glfwSetWindowTitle(m_window, fps);
 	}
 	return 0;
 }

@@ -16,6 +16,11 @@ cbuffer camera : register(b0)
 	matrix view;
 }
 
+cbuffer object : register(b1)
+{
+	matrix model;
+}
+
 VS_OUT main(VS_INPUT input)
 {
 	VS_OUT output;
