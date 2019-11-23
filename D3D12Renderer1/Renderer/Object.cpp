@@ -171,7 +171,7 @@ void Object::draw(ResourceHeap& textureHeap)
 	for (int i = 0; i < m_meshes.size(); i++)
 	{
 		if(m_meshes[i].m_material.m_albedoTextureLoaded)
-			textureHeap.bindDescriptorTable(2, m_meshes[i].m_material.m_albedoTexture.m_descriptorOffset);
+			textureHeap.bindDescriptorTable(2, m_meshes[i].m_material.m_albedoTexture.m_descriptorOffset,0);
 		D3DContext::getCurrent()->getCommandList()->DrawIndexedInstanced(m_meshes[i].m_numIndices, 1, m_meshes[i].m_baseIndexLocation, m_meshes[i].m_baseVertexLocation, 0);
 	}
 }

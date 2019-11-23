@@ -9,7 +9,7 @@ public:
 	void destroy();
 
 	void bindDescriptorTable(int rootParameterIndex, int baseDescriptorIndex);
-
+	void bindDescriptorTable(int rootParameterIndex, int baseDescriptorIndex, int descriptorHeapIndex);
 	int numBoundDescriptors = 0;	//Whichever method uses the resource heap should probably increment this handle to not screw everything up
 
 	ID3D12DescriptorHeap* getCurrent();

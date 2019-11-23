@@ -27,7 +27,7 @@ bool Texture2D::init(std::string texturePath, ResourceHeap& resourceHeap)
 	tex2DDesc.Width = width;
 	tex2DDesc.Height = height;
 	tex2DDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-	tex2DDesc.MipLevels = 5;// 1 + floor(log2(std::max(width, height)));
+	tex2DDesc.MipLevels = (floor(log2(std::max(width, height)))) + 1;
 	tex2DDesc.SampleDesc.Count = 1;;
 
 	//std::cout << tex2DDesc.MipLevels << std::endl;
@@ -63,11 +63,6 @@ bool Texture2D::init(std::string texturePath, ResourceHeap& resourceHeap)
 	stbi_image_free(imgData);
 	delete[] rgbaImageData;
 
-	D3DContext::getCurrent()->executeAndSynchronize();
-	D3DContext::getCurrent()->synchronizeAndReset();
-
-	Texture2D::generateMipmaps(m_textureStorageHeap, tex2DDesc.MipLevels, width, height);
-
 	CD3DX12_CPU_DESCRIPTOR_HANDLE resourceHeapHandle(resourceHeap.getCurrent(0)->GetCPUDescriptorHandleForHeapStart());
 	if (resourceHeap.numBoundDescriptors > 0)
 	{
@@ -85,8 +80,7 @@ bool Texture2D::init(std::string texturePath, ResourceHeap& resourceHeap)
 	m_descriptorOffset = resourceHeap.numBoundDescriptors;
 	resourceHeap.numBoundDescriptors++;
 
-	//m_textureUploadHeap->Release();
-
+	Texture2D::generateMipmaps(m_textureStorageHeap, tex2DDesc.MipLevels, width, height);
 
 	return true;
 }
@@ -149,9 +143,9 @@ bool Texture2D::generateMipmaps(ID3D12Resource* resource, int numMipMaps, int wi
 
 	D3D12_STATIC_SAMPLER_DESC samplerDesc = {};
 	samplerDesc.Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
-	samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-	samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-	samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+	samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
 	samplerDesc.MipLODBias = 0.0f;
 	samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
 	samplerDesc.MinLOD = 0.0f;
@@ -198,10 +192,6 @@ bool Texture2D::generateMipmaps(ID3D12Resource* resource, int numMipMaps, int wi
 	D3D12_UNORDERED_ACCESS_VIEW_DESC destTextureUAVDesc = {};
 	destTextureUAVDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
 
-	//Command list SHOULD have all staging changes submitted from synchronizing and resetting just prior, so this should be fine
-	D3DContext::getCurrent()->getCommandList()->SetComputeRootSignature(mipmapRootSignature);
-	D3DContext::getCurrent()->getCommandList()->SetPipelineState(psoMipMaps);
-	D3DContext::getCurrent()->getCommandList()->SetDescriptorHeaps(1, &descriptorHeap);
 
 	//CPU handle for the first descriptor on the descriptor heap, used to fill the heap
 	CD3DX12_CPU_DESCRIPTOR_HANDLE currentCPUHandle(descriptorHeap->GetCPUDescriptorHandleForHeapStart(), 0, descriptorSize);
@@ -212,6 +202,11 @@ bool Texture2D::generateMipmaps(ID3D12Resource* resource, int numMipMaps, int wi
 	D3DContext::getCurrent()->getCommandList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(resource, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 	for (uint32_t TopMip = 0; TopMip < numMipMaps - 1; TopMip++)
 	{
+		//Command list SHOULD have all staging changes submitted from synchronizing and resetting just prior, so this should be fine
+		D3DContext::getCurrent()->getCommandList()->SetComputeRootSignature(mipmapRootSignature);
+		D3DContext::getCurrent()->getCommandList()->SetPipelineState(psoMipMaps);
+		D3DContext::getCurrent()->getCommandList()->SetDescriptorHeaps(1, &descriptorHeap);
+
 		uint32_t dstWidth = std::max(width >> (TopMip + 1), 1);
 		uint32_t dstHeight = std::max(height >> (TopMip + 1), 1);
 
@@ -237,10 +232,11 @@ bool Texture2D::generateMipmaps(ID3D12Resource* resource, int numMipMaps, int wi
 
 		D3DContext::getCurrent()->getCommandList()->Dispatch(std::max(dstWidth / 8, 1u), std::max(dstHeight / 8, 1u), 1);
 
+		D3DContext::getCurrent()->executeAndSynchronize();
+		D3DContext::getCurrent()->synchronizeAndReset();
+
 	}
 	D3DContext::getCurrent()->getCommandList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(resource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
-	D3DContext::getCurrent()->executeAndSynchronize();
-	D3DContext::getCurrent()->synchronizeAndReset();
 	descriptorHeap->Release();
 	return true;
 }

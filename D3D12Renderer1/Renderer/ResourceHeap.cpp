@@ -22,6 +22,7 @@ bool ResourceHeap::init(int numDescriptors)
 	return true;
 }
 
+
 void ResourceHeap::destroy()
 {
 	//todo
@@ -35,6 +36,18 @@ void ResourceHeap::bindDescriptorTable(int rootParameterIndex, int baseDescripto
 		UINT increment = D3DContext::getCurrent()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		gpuDescriptorHandle.Offset(baseDescriptorIndex, increment);
 	}
+	D3DContext::getCurrent()->getCommandList()->SetGraphicsRootDescriptorTable(rootParameterIndex, gpuDescriptorHandle);
+}
+
+void ResourceHeap::bindDescriptorTable(int rootParameterIndex, int baseDescriptorIndex, int descriptorHeapIndex)
+{
+	CD3DX12_GPU_DESCRIPTOR_HANDLE gpuDescriptorHandle(m_descriptorHeaps[descriptorHeapIndex]->GetGPUDescriptorHandleForHeapStart());
+	if (baseDescriptorIndex)
+	{
+		UINT increment = D3DContext::getCurrent()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		gpuDescriptorHandle.Offset(baseDescriptorIndex, increment);
+	}
+
 	D3DContext::getCurrent()->getCommandList()->SetGraphicsRootDescriptorTable(rootParameterIndex, gpuDescriptorHandle);
 }
 

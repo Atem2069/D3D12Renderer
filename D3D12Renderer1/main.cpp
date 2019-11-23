@@ -182,11 +182,14 @@ int main()
 		m_lightBuffer.bind(1);
 		m_object.draw(m_objectsResourceHeap);
 		m_object2.draw(m_objectsResourceHeap);
-		D3DContext::getCurrent()->endRenderPass();
+
 		ID3D12DescriptorHeap* baseResHeaps[1] = { m_imguiResourceHeap.getCurrent(0) };
 		D3DContext::getCurrent()->bindAllResourceHeaps(baseResHeaps, 1);
 		ImGui::Render();
 		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), D3DContext::getCurrent()->getCommandList());
+
+
+		D3DContext::getCurrent()->endRenderPass();
 
 		if (!D3DContext::getCurrent()->executeAndPresent(false))
 			glfwSetWindowShouldClose(m_window, GLFW_TRUE);
@@ -196,9 +199,9 @@ int main()
 		if (glfwGetKey(m_window, GLFW_KEY_S) == GLFW_PRESS)
 			cameraPosition -= cameraEye * cameraSpeed * deltaTime;
 		if (glfwGetKey(m_window, GLFW_KEY_A) == GLFW_PRESS)
-			cameraPosition += XMVector3Cross(cameraEye, XMVectorSet(0, 1, 0, 1)) * cameraSpeed * deltaTime;
+			cameraPosition += XMVector3Normalize(XMVector3Cross(cameraEye, XMVectorSet(0, 1, 0, 1))) * cameraSpeed * deltaTime;
 		if (glfwGetKey(m_window, GLFW_KEY_D) == GLFW_PRESS)
-			cameraPosition -= XMVector3Cross(cameraEye, XMVectorSet(0, 1, 0, 1)) * cameraSpeed * deltaTime;
+			cameraPosition -= XMVector3Normalize(XMVector3Cross(cameraEye, XMVectorSet(0, 1, 0, 1))) * cameraSpeed * deltaTime;
 		if (glfwGetKey(m_window, GLFW_KEY_SPACE))
 			cameraPosition += XMVectorSet(0, 1, 0, 1) * cameraSpeed * deltaTime;
 		if (glfwGetKey(m_window, GLFW_KEY_LEFT_SHIFT))

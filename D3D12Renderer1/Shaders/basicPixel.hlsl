@@ -18,9 +18,11 @@ float4 main(VS_OUT input) : SV_Target
 	//Basic lighting
 	float width,height;
 	albedoTex.GetDimensions(width, height);
-	float3 texColor = albedoTex.Sample(samplerState,input.texcoord).xyz;
+	float4 texColor = albedoTex.Sample(samplerState,input.texcoord).xyzw;
 	if (!width || !height)
-		texColor = float3(1, 1, 1);
+		texColor.xyz = float3(1, 1, 1);
+	if (texColor.w < 0.75)
+		clip(-1);
 	float3 lightColor = float3(1,1,1);
 	float ambientTerm = 0.3f * lightColor;
 
@@ -28,6 +30,6 @@ float4 main(VS_OUT input) : SV_Target
 
 	float diffuseTerm = max(dot(normalize(input.normal), lightDir), 0.0f);
 
-	float3 result = (ambientTerm + diffuseTerm) * texColor;
+	float3 result = (ambientTerm + diffuseTerm) * texColor.xyz;
 	return float4(result, 1.0f);
 }
