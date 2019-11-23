@@ -1,7 +1,8 @@
 #include "Object.h"
 
-bool Object::init(std::string filePath)
+bool Object::init(std::string filePath, ResourceHeap& textureHeap)
 {
+	std::string dir = filePath.substr(0, filePath.find_last_of(R"(\)")) + R"(\)";
 	HRESULT result;
 
 	Assimp::Importer m_importer;
@@ -33,6 +34,12 @@ bool Object::init(std::string filePath)
 			tempVertex.normal.y = aiMesh->mNormals[j].y;
 			tempVertex.normal.z = aiMesh->mNormals[j].z;
 
+			if (aiMesh->mTextureCoords[0])
+			{
+				tempVertex.texcoord.x = aiMesh->mTextureCoords[0][j].x;
+				tempVertex.texcoord.y = aiMesh->mTextureCoords[0][j].y;
+			}
+
 			m_vertices.push_back(tempVertex);
 		}
 
@@ -54,6 +61,37 @@ bool Object::init(std::string filePath)
 		globalIndexBase += noIndices;
 
 		tempMesh.m_numIndices = noIndices;
+
+		//Texturing
+		if (aiMesh->mMaterialIndex > 0)
+		{
+			aiMaterial* material = m_scene->mMaterials[aiMesh->mMaterialIndex];
+			tempMesh.m_material.m_materialIndex = aiMesh->mMaterialIndex;
+
+			if (material->GetTextureCount(aiTextureType_DIFFUSE) > 0)
+			{
+				bool loadTexture = true;
+				for (int j = 0; j < i; j++)
+				{
+					if (m_meshes[j].m_material.m_materialIndex == tempMesh.m_material.m_materialIndex)
+					{
+						loadTexture = false;
+						tempMesh.m_material.m_albedoTexture = m_meshes[j].m_material.m_albedoTexture;
+					}
+				}
+
+				if (loadTexture)
+				{
+					aiString texPath;
+					material->GetTexture(aiTextureType_DIFFUSE, 0, &texPath);
+					std::string texFile = texPath.C_Str();
+					std::string texturePath = dir + texFile;
+					tempMesh.m_material.m_albedoTexture.init(texturePath, textureHeap);
+				}
+
+				tempMesh.m_material.m_albedoTextureLoaded = true;
+			}
+		}
 
 		m_meshes.push_back(tempMesh);
 	}
@@ -126,10 +164,14 @@ void Object::destroy()
 	//todo lol
 }
 
-void Object::draw()
+void Object::draw(ResourceHeap& textureHeap)
 {
 	D3DContext::getCurrent()->getCommandList()->IASetVertexBuffers(0, 1, &m_vertexBufferView);
 	D3DContext::getCurrent()->getCommandList()->IASetIndexBuffer(&m_indexBufferView);
 	for (int i = 0; i < m_meshes.size(); i++)
+	{
+		if(m_meshes[i].m_material.m_albedoTextureLoaded)
+			textureHeap.bindDescriptorTable(2, m_meshes[i].m_material.m_albedoTexture.m_descriptorOffset);
 		D3DContext::getCurrent()->getCommandList()->DrawIndexedInstanced(m_meshes[i].m_numIndices, 1, m_meshes[i].m_baseIndexLocation, m_meshes[i].m_baseVertexLocation, 0);
+	}
 }

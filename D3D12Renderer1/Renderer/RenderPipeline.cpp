@@ -103,11 +103,11 @@ bool RenderPipeline::initBasic(std::string vertexPath, std::string pixelPath)
 	return true;
 }
 
-bool RenderPipeline::initWithRootParameters(std::string vertexPath, std::string pixelPath, D3D12_ROOT_PARAMETER* rootParameters, int numRootParameters)
+bool RenderPipeline::initWithRootParameters(std::string vertexPath, std::string pixelPath, D3D12_ROOT_PARAMETER* rootParameters, int numRootParameters, D3D12_STATIC_SAMPLER_DESC* m_samplers, int numSamplers)
 {
 	HRESULT result;;
 	CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
-	rootSignatureDesc.Init(numRootParameters, rootParameters, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+	rootSignatureDesc.Init(numRootParameters, rootParameters, numSamplers, m_samplers, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 	ID3DBlob* signature;
 	result = D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, nullptr);
@@ -157,7 +157,7 @@ bool RenderPipeline::initWithRootParameters(std::string vertexPath, std::string 
 	pixelShader.pShaderBytecode = pixelBytecode->GetBufferPointer();
 	pixelShader.BytecodeLength = pixelBytecode->GetBufferSize();
 
-	D3D12_INPUT_ELEMENT_DESC inputLayouts[2];
+	D3D12_INPUT_ELEMENT_DESC inputLayouts[3];
 	inputLayouts[0].AlignedByteOffset = 0;
 	inputLayouts[0].Format = DXGI_FORMAT_R32G32B32_FLOAT;
 	inputLayouts[0].InputSlot = 0;
@@ -174,8 +174,16 @@ bool RenderPipeline::initWithRootParameters(std::string vertexPath, std::string 
 	inputLayouts[1].SemanticIndex = 0;
 	inputLayouts[1].SemanticName = "NORMAL";
 
+	inputLayouts[2].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+	inputLayouts[2].Format = DXGI_FORMAT_R32G32_FLOAT;
+	inputLayouts[2].InputSlot = 0;
+	inputLayouts[2].InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
+	inputLayouts[2].InstanceDataStepRate = 0;
+	inputLayouts[2].SemanticIndex = 0;
+	inputLayouts[2].SemanticName = "TEXCOORD";
+
 	D3D12_INPUT_LAYOUT_DESC inputLayoutDesc = {};
-	inputLayoutDesc.NumElements = 2;
+	inputLayoutDesc.NumElements = 3;
 	inputLayoutDesc.pInputElementDescs = inputLayouts;
 
 	D3D12_RASTERIZER_DESC rasterizerStateDesc = {};

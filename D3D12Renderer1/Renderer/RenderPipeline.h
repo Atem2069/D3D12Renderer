@@ -10,7 +10,7 @@ public:
 	bool initBasic(std::string vertexShaderPath, std::string pixelShaderPath);
 
 	//Initializes with custom root parameters
-	bool initWithRootParameters(std::string vertexShaderPath, std::string pixelShaderPath, D3D12_ROOT_PARAMETER* rootParameters, int numRootParameters);
+	bool initWithRootParameters(std::string vertexShaderPath, std::string pixelShaderPath, D3D12_ROOT_PARAMETER* rootParameters, int numRootParameters, D3D12_STATIC_SAMPLER_DESC* m_samplers, int numSamplers);
 	void destroy();
 
 	void bind();

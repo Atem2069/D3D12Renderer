@@ -2,6 +2,7 @@
 #include <cmath>
 #define NOMINMAX
 #define GLFW_EXPOSE_NATIVE_WIN32
+#define STB_IMAGE_IMPLEMENTATION
 #pragma warning(disable:4996)
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
@@ -71,36 +72,54 @@ int main()
 	ImGui_ImplGlfw_InitForVulkan(m_window, true);
 	ImGui_ImplDX12_Init(D3DContext::getCurrent()->getDevice(), 2, DXGI_FORMAT_R8G8B8A8_UNORM, baseResHeapDescHandle, baseResHeapDescGPUHandle);
 
-
-	D3D12_ROOT_DESCRIPTOR m_cameraDescriptor = {};
-	m_cameraDescriptor.RegisterSpace = 0;
-	m_cameraDescriptor.ShaderRegister = 0;
-
-	D3D12_ROOT_DESCRIPTOR m_lightConstDescriptor = {};
-	m_lightConstDescriptor.RegisterSpace = 0;
-	m_lightConstDescriptor.ShaderRegister = 0;
-
-
-	D3D12_ROOT_PARAMETER m_rootParameters[2] = {};
+	D3D12_ROOT_PARAMETER m_rootParameters[3] = {};
 	m_rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-	m_rootParameters[0].Descriptor = m_cameraDescriptor;
+	m_rootParameters[0].Descriptor = CD3DX12_ROOT_DESCRIPTOR(0, 0);
 	m_rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 
 	m_rootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-	m_rootParameters[1].Descriptor = m_lightConstDescriptor;
+	m_rootParameters[1].Descriptor = CD3DX12_ROOT_DESCRIPTOR(0, 0);
 	m_rootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
+	D3D12_DESCRIPTOR_RANGE texRange = {};
+	texRange.NumDescriptors = 1;
+	texRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+	texRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	texRange.RegisterSpace = 0;
+	texRange.BaseShaderRegister = 0;
+
+	D3D12_ROOT_DESCRIPTOR_TABLE texTable = {};
+	texTable.NumDescriptorRanges = 1;
+	texTable.pDescriptorRanges = &texRange;
+
+	m_rootParameters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	m_rootParameters[2].DescriptorTable = texTable;
+	m_rootParameters[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+	D3D12_STATIC_SAMPLER_DESC m_samplerDesc = {};
+	m_samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	m_samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	m_samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	m_samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+	m_samplerDesc.MaxAnisotropy = 16;
+	m_samplerDesc.ShaderRegister = 0;
+	m_samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	
+
 	RenderPipeline m_pipeline;
-	if(!m_pipeline.initWithRootParameters(R"(Shaders\basicVertex.hlsl)",R"(Shaders\basicPixel.hlsl)",m_rootParameters,2))
+	if(!m_pipeline.initWithRootParameters(R"(Shaders\basicVertex.hlsl)",R"(Shaders\basicPixel.hlsl)",m_rootParameters,3,&m_samplerDesc,1))
+		return -1;
+
+	ResourceHeap m_objectsResourceHeap;
+	if (!m_objectsResourceHeap.init(1024))
 		return -1;
 
 	Object m_object;
-	if (!m_object.init(R"(Models\sanmiguel\san-miguel-low-poly.obj)"))
+	if (!m_object.init(R"(Models\sanmiguel\san-miguel-low-poly.obj)", m_objectsResourceHeap))
 		return -1;
 	Object m_object2;
-	if (!m_object2.init(R"(Models\nanosuit\nanosuit.obj)"))
+	if (!m_object2.init(R"(Models\nanosuit\nanosuit.obj)", m_objectsResourceHeap))
 		return -1;
-
 	BasicCamera m_basicCamera = {};
 	XMVECTOR cameraPosition = XMVectorSet(0, 0, 0, 1);
 	XMVECTOR cameraEye = XMVectorSet(0, 0, 1, 1);
@@ -153,10 +172,12 @@ int main()
 		m_lightBuffer.update(&m_light, sizeof(LightBuffer));
 	
 		m_pipeline.bind();
+		ID3D12DescriptorHeap* objResHeaps[1] = { m_objectsResourceHeap.getCurrent(0) };
+		D3DContext::getCurrent()->bindAllResourceHeaps(objResHeaps, 1);
 		m_cameraBuffer.bind(0);
 		m_lightBuffer.bind(1);
-		m_object.draw();
-		m_object2.draw();
+		m_object.draw(m_objectsResourceHeap);
+		m_object2.draw(m_objectsResourceHeap);
 		ID3D12DescriptorHeap* baseResHeaps[1] = { m_imguiResourceHeap.getCurrent(0) };
 		D3DContext::getCurrent()->bindAllResourceHeaps(baseResHeaps, 1);
 		ImGui::Render();
