@@ -1,6 +1,6 @@
+#define NOMINMAX
 #include<iostream>
 #include <cmath>
-#define NOMINMAX
 #define GLFW_EXPOSE_NATIVE_WIN32
 #define STB_IMAGE_IMPLEMENTATION
 #pragma warning(disable:4996)
@@ -100,9 +100,12 @@ int main()
 	m_samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
 	m_samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
 	m_samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	m_samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+	//m_samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+	m_samplerDesc.Filter = D3D12_FILTER_ANISOTROPIC;
 	m_samplerDesc.MaxAnisotropy = 16;
 	m_samplerDesc.ShaderRegister = 0;
+	m_samplerDesc.MinLOD = 0;
+	m_samplerDesc.MaxLOD = D3D12_FLOAT32_MAX;
 	m_samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 	
 
@@ -115,7 +118,7 @@ int main()
 		return -1;
 
 	Object m_object;
-	if (!m_object.init(R"(Models\sanmiguel\san-miguel-low-poly.obj)", m_objectsResourceHeap))
+	if (!m_object.init(R"(Models\sponza\sponza.obj)", m_objectsResourceHeap))
 		return -1;
 	Object m_object2;
 	if (!m_object2.init(R"(Models\nanosuit\nanosuit.obj)", m_objectsResourceHeap))
@@ -140,7 +143,7 @@ int main()
 
 	double lastTime = 0, currentTime = glfwGetTime(), deltaTime = 1;
 	float pitch = 0, yaw = 0;
-	float cameraSpeed = 25.0f;
+	float cameraSpeed = 250.0f;
 	while (!glfwWindowShouldClose(m_window))
 	{
 		glfwPollEvents();
@@ -171,19 +174,20 @@ int main()
 		m_cameraBuffer.update(&m_basicCamera, sizeof(BasicCamera));
 		m_lightBuffer.update(&m_light, sizeof(LightBuffer));
 	
-		m_pipeline.bind();
 		ID3D12DescriptorHeap* objResHeaps[1] = { m_objectsResourceHeap.getCurrent(0) };
 		D3DContext::getCurrent()->bindAllResourceHeaps(objResHeaps, 1);
+
+		m_pipeline.bind();
 		m_cameraBuffer.bind(0);
 		m_lightBuffer.bind(1);
 		m_object.draw(m_objectsResourceHeap);
 		m_object2.draw(m_objectsResourceHeap);
+		D3DContext::getCurrent()->endRenderPass();
 		ID3D12DescriptorHeap* baseResHeaps[1] = { m_imguiResourceHeap.getCurrent(0) };
 		D3DContext::getCurrent()->bindAllResourceHeaps(baseResHeaps, 1);
 		ImGui::Render();
 		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), D3DContext::getCurrent()->getCommandList());
 
-		D3DContext::getCurrent()->endRenderPass();
 		if (!D3DContext::getCurrent()->executeAndPresent(false))
 			glfwSetWindowShouldClose(m_window, GLFW_TRUE);
 

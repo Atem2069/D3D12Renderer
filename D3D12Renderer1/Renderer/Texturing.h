@@ -1,5 +1,5 @@
 #pragma once
-
+#define NOMINMAX
 #include "BaseRenderer.h"
 #include "ResourceHeap.h"
 #include <stb_image.h>
@@ -11,6 +11,8 @@ public:
 
 	void bind(int rootParameterIndex);
 	int m_descriptorOffset;
+
+	static bool generateMipmaps(ID3D12Resource* resource, int numMipMaps, int width, int height);
 private:
 	D3D12_GPU_VIRTUAL_ADDRESS m_textureAddress;
 	ID3D12Resource* m_textureStorageHeap;

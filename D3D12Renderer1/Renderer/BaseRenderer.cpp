@@ -166,6 +166,23 @@ void D3D::destroy()
 	//todo
 }
 
+bool D3D::submitCommandList(ID3D12GraphicsCommandList* commandList)
+{
+	m_commandQueue->ExecuteCommandLists(1, (ID3D12CommandList**)&commandList);
+	m_commandQueue->Signal(m_fences[this->getCurrentBuffer()], m_fenceValues[this->getCurrentBuffer()]);
+	int currentBuffer = this->getCurrentBuffer();
+	if (m_fences[currentBuffer]->GetCompletedValue() < m_fenceValues[currentBuffer])
+	{
+		HRESULT result = m_fences[currentBuffer]->SetEventOnCompletion(m_fenceValues[currentBuffer], fenceEvent);
+		if (FAILED(result))
+			return false;
+		WaitForSingleObject(fenceEvent, INFINITE);
+	}
+	m_fenceValues[currentBuffer]++;
+
+	return true;
+}
+
 bool D3D::executeAndSynchronize()
 {
 	m_commandList->Close();

@@ -21,6 +21,8 @@ public:
 	bool init(int width, int height, HWND hwnd);
 	void destroy();
 
+	//Execute a given command list and fully synchronize
+	bool submitCommandList(ID3D12GraphicsCommandList* commandList);
 	//Closes command list and executes all changes, then synchronizes -- used for executing staging GPU changes from initializing
 	bool executeAndSynchronize();
 	//Force fence synchronization, and then reset the command list (only 1 as this is a singlethreaded renderer)
