@@ -15,14 +15,23 @@ struct Vertex
 	XMFLOAT2 texcoord;
 };
 
+
+struct CommandList
+{
+	ID3D12GraphicsCommandList* m_commandList;
+	ID3D12CommandAllocator* m_commandAllocator;
+};
+
 class D3D
 {
 public:
 	bool init(int width, int height, HWND hwnd);
 	void destroy();
 
+	//Execute default command list
+	bool submitDefaultCommandList();
 	//Execute a given command list and fully synchronize
-	bool submitCommandList(ID3D12GraphicsCommandList* commandList);
+	bool submitCommandList(CommandList& commandList);
 	//Closes command list and executes all changes, then synchronizes -- used for executing staging GPU changes from initializing
 	bool executeAndSynchronize();
 	//Force fence synchronization, and then reset the command list (only 1 as this is a singlethreaded renderer)
@@ -40,8 +49,12 @@ public:
 
 	void bindAllResourceHeaps(ID3D12DescriptorHeap** descriptorHeaps, int numDescriptorHeaps);
 
+	CommandList createCommandList();
+
 	ID3D12Device* getDevice();
 	ID3D12GraphicsCommandList* getCommandList();
+
+	std::string graphicsAdapterName;
 private:
 	HANDLE fenceEvent;
 	UINT64 m_fenceValues[2];

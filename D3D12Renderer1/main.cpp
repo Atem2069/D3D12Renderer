@@ -26,6 +26,7 @@ struct BasicCamera
 {
 	XMMATRIX projection;
 	XMMATRIX view;
+	XMVECTOR position;
 };
 
 struct LightBuffer
@@ -100,7 +101,6 @@ int main()
 	m_samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
 	m_samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
 	m_samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	//m_samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
 	m_samplerDesc.Filter = D3D12_FILTER_ANISOTROPIC;
 	m_samplerDesc.MaxAnisotropy = 16;
 	m_samplerDesc.ShaderRegister = 0;
@@ -114,18 +114,19 @@ int main()
 		return -1;
 
 	ResourceHeap m_objectsResourceHeap;
-	if (!m_objectsResourceHeap.init(1024))
+	if (!m_objectsResourceHeap.init(65535))
 		return -1;
 
 	Object m_object;
 	if (!m_object.init(R"(Models\sponza\sponza.obj)", m_objectsResourceHeap))
 		return -1;
 	Object m_object2;
-	if (!m_object2.init(R"(Models\nanosuit\nanosuit.obj)", m_objectsResourceHeap))
+	if (!m_object2.init(R"(Models\materialball\export3dcoat.obj)", m_objectsResourceHeap))
 		return -1;
 	BasicCamera m_basicCamera = {};
 	XMVECTOR cameraPosition = XMVectorSet(0, 0, 0, 1);
 	XMVECTOR cameraEye = XMVectorSet(0, 0, 1, 1);
+	XMVECTOR cameraUp = XMVectorSet(0, 1, 0, 1);
 	m_basicCamera.projection = XMMatrixPerspectiveFovLH(XMConvertToRadians(60.0f), (float)Width / (float)Height, 1.0f, 10000.0f);
 	m_basicCamera.view = XMMatrixLookAtLH(cameraPosition, cameraPosition + cameraEye, XMVectorSet(0, 1, 0, 1));
 
@@ -142,14 +143,20 @@ int main()
 	D3DContext::getCurrent()->executeAndSynchronize();	//Execute staging changes to CMD list.
 
 	double lastTime = 0, currentTime = glfwGetTime(), deltaTime = 1;
+	double cpuLastTime = 0, cpuCurrentTime = glfwGetTime(), cpuDeltaTime = 0;
+	double gpuLastTime = 0, gpuCurrentTime = glfwGetTime(), gpuDeltaTime = 0;
 	float pitch = 0, yaw = 0;
 	float cameraSpeed = 250.0f;
+	XMFLOAT4 temp_imguiPosition;
 	while (!glfwWindowShouldClose(m_window))
 	{
 		glfwPollEvents();
 
 		D3DContext::getCurrent()->synchronizeAndReset();
 
+		gpuCurrentTime = glfwGetTime();
+		gpuDeltaTime = gpuCurrentTime - gpuLastTime;
+		cpuLastTime = glfwGetTime();
 		ImGui_ImplDX12_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
@@ -157,12 +164,15 @@ int main()
 		ImGui::Begin("Renderer Info-Direct3D 12");
 		{
 			ImGui::Text("Current FPS:: %.2f", 1 / deltaTime);
+			ImGui::Text("CPU Time :: %.1f ms GPU Time :: %.1f ms", cpuDeltaTime*1000, gpuDeltaTime*1000);
 			ImGui::Text("Current Face Count:: %d", m_object.m_faces + m_object2.m_faces);
 		}
 		ImGui::End();
 		
 		ImGui::Begin("Renderer Properties");
 		{
+			XMStoreFloat4(&temp_imguiPosition, cameraPosition);
+			ImGui::Text("Position: {%.1f, %.1f, %.1f}", temp_imguiPosition.x, temp_imguiPosition.y, temp_imguiPosition.z);
 			ImGui::DragFloat3("Light direction", (float*)&m_light.lightDirection);
 		}
 		ImGui::End();
@@ -170,7 +180,8 @@ int main()
 		D3DContext::getCurrent()->beginRenderPass(0.564f, 0.8f, 0.976f, 1.f);
 
 		//CPU update
-		m_basicCamera.view = XMMatrixLookAtLH(cameraPosition, cameraPosition + cameraEye, XMVectorSet(0, 1, 0, 1));
+		m_basicCamera.view = XMMatrixLookAtLH(cameraPosition, cameraPosition + cameraEye, cameraUp);
+		m_basicCamera.position = cameraPosition;
 		m_cameraBuffer.update(&m_basicCamera, sizeof(BasicCamera));
 		m_lightBuffer.update(&m_light, sizeof(LightBuffer));
 	
@@ -191,21 +202,18 @@ int main()
 
 		D3DContext::getCurrent()->endRenderPass();
 
-		if (!D3DContext::getCurrent()->executeAndPresent(false))
-			glfwSetWindowShouldClose(m_window, GLFW_TRUE);
-
 		if (glfwGetKey(m_window, GLFW_KEY_W) == GLFW_PRESS)
 			cameraPosition += cameraEye * cameraSpeed * deltaTime;
 		if (glfwGetKey(m_window, GLFW_KEY_S) == GLFW_PRESS)
 			cameraPosition -= cameraEye * cameraSpeed * deltaTime;
 		if (glfwGetKey(m_window, GLFW_KEY_A) == GLFW_PRESS)
-			cameraPosition += XMVector3Normalize(XMVector3Cross(cameraEye, XMVectorSet(0, 1, 0, 1))) * cameraSpeed * deltaTime;
+			cameraPosition += XMVector3Normalize(XMVector3Cross(cameraEye, cameraUp)) * cameraSpeed * deltaTime;
 		if (glfwGetKey(m_window, GLFW_KEY_D) == GLFW_PRESS)
-			cameraPosition -= XMVector3Normalize(XMVector3Cross(cameraEye, XMVectorSet(0, 1, 0, 1))) * cameraSpeed * deltaTime;
+			cameraPosition -= XMVector3Normalize(XMVector3Cross(cameraEye, cameraUp)) * cameraSpeed * deltaTime;
 		if (glfwGetKey(m_window, GLFW_KEY_SPACE))
-			cameraPosition += XMVectorSet(0, 1, 0, 1) * cameraSpeed * deltaTime;
+			cameraPosition += cameraUp * cameraSpeed * deltaTime;
 		if (glfwGetKey(m_window, GLFW_KEY_LEFT_SHIFT))
-			cameraPosition -= XMVectorSet(0, 1, 0, 1) * cameraSpeed * deltaTime;
+			cameraPosition -= cameraUp * cameraSpeed * deltaTime;
 		if (glfwGetKey(m_window, GLFW_KEY_LEFT) == GLFW_PRESS)
 			yaw += 0.5f * deltaTime * 250.0f;
 		if (glfwGetKey(m_window, GLFW_KEY_RIGHT) == GLFW_PRESS)
@@ -215,8 +223,16 @@ int main()
 		if (glfwGetKey(m_window, GLFW_KEY_DOWN) == GLFW_PRESS)
 			pitch -= 0.5f * deltaTime * 250.0f;
 
-		cameraEye = XMVectorSet(XMScalarCos(XMConvertToRadians(pitch)) * XMScalarCos(XMConvertToRadians(yaw)), XMScalarSin(XMConvertToRadians(pitch)), XMScalarCos(XMConvertToRadians(pitch)) * XMScalarSin(XMConvertToRadians(yaw)),1);
+		cameraEye = XMVectorSet(XMScalarCos(XMConvertToRadians(pitch)) * XMScalarCos(XMConvertToRadians(yaw)), XMScalarSin(XMConvertToRadians(pitch)), XMScalarCos(XMConvertToRadians(pitch)) * XMScalarSin(XMConvertToRadians(yaw)), 1);
 		XMVector3Normalize(cameraEye);
+
+		cpuCurrentTime = glfwGetTime();
+		cpuDeltaTime = cpuCurrentTime - cpuLastTime;
+
+		gpuLastTime = glfwGetTime();
+		if (!D3DContext::getCurrent()->executeAndPresent(false))
+			glfwSetWindowShouldClose(m_window, GLFW_TRUE);
+
 		//Calculate deltatime
 		deltaTime = currentTime - lastTime;
 		lastTime = currentTime;

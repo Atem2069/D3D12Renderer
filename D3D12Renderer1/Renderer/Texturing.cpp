@@ -80,7 +80,13 @@ bool Texture2D::init(std::string texturePath, ResourceHeap& resourceHeap)
 	m_descriptorOffset = resourceHeap.numBoundDescriptors;
 	resourceHeap.numBoundDescriptors++;
 
-	Texture2D::generateMipmaps(m_textureStorageHeap, tex2DDesc.MipLevels, width, height);
+	D3DContext::getCurrent()->submitDefaultCommandList();
+
+	if (!Texture2D::generateMipmaps(m_textureStorageHeap, tex2DDesc.MipLevels, width, height))
+	{
+		std::cout << "Mipmap generation failed on " << texturePath << std::endl;
+		return false;
+	}
 
 	return true;
 }
@@ -114,6 +120,7 @@ void Texture2D::unpackRGBToRGBA(int width, int height, unsigned char * input, un
 
 bool Texture2D::generateMipmaps(ID3D12Resource* resource, int numMipMaps, int width, int height)
 {
+	HRESULT result;
 	//Union used for shader constants
 	struct DWParam
 	{
@@ -143,9 +150,9 @@ bool Texture2D::generateMipmaps(ID3D12Resource* resource, int numMipMaps, int wi
 
 	D3D12_STATIC_SAMPLER_DESC samplerDesc = {};
 	samplerDesc.Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
-	samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+	samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+	samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
 	samplerDesc.MipLODBias = 0.0f;
 	samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
 	samplerDesc.MinLOD = 0.0f;
@@ -161,9 +168,20 @@ bool Texture2D::generateMipmaps(ID3D12Resource* resource, int numMipMaps, int wi
 
 	CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
 	rootSignatureDesc.Init(_countof(rootParameters), rootParameters, 1, &samplerDesc, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
-	D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &error);
+	result = D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &error);
+	if (FAILED(result))
+	{
+		std::cout << "Failed to serialize root signature.. " << std::endl;
+		std::cout << (char*)error->GetBufferPointer();
+		return false;
+	}
 	ID3D12RootSignature* mipmapRootSignature;
-	D3DContext::getCurrent()->getDevice()->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), __uuidof(ID3D12RootSignature), (void**)&mipmapRootSignature);
+	result = D3DContext::getCurrent()->getDevice()->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), __uuidof(ID3D12RootSignature), (void**)&mipmapRootSignature);
+	if (FAILED(result))
+	{
+		std::cout << "Failed to create root signature.. " << std::endl;
+		return false;
+	}
 
 	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
 	heapDesc.NumDescriptors = 2 * requiredHeapSize;
@@ -175,15 +193,26 @@ bool Texture2D::generateMipmaps(ID3D12Resource* resource, int numMipMaps, int wi
 	UINT descriptorSize = D3DContext::getCurrent()->getDevice()->GetDescriptorHandleIncrementSize(heapDesc.Type);
 
 	ID3DBlob* shaderbytecode;
-	D3DCompileFromFile(L"Shaders\\generateMipsCompute.hlsl", nullptr, nullptr, "GenerateMipMaps", "cs_5_0", 0, 0, &shaderbytecode, &error);
+	result = D3DCompileFromFile(L"Shaders\\generateMipsCompute.hlsl", nullptr, nullptr, "GenerateMipMaps", "cs_5_0", 0, 0, &shaderbytecode, &error);
+	if (FAILED(result))
+	{
+		std::cout << "Failed to compile compute shader.. " << std::endl;
+		std::cout << (char*)error->GetBufferPointer();
+	}
 	D3D12_SHADER_BYTECODE computeBytecode = {};
 	computeBytecode.BytecodeLength = shaderbytecode->GetBufferSize();
 	computeBytecode.pShaderBytecode = shaderbytecode->GetBufferPointer();
+
 	D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc = {};
 	psoDesc.pRootSignature = mipmapRootSignature;
 	psoDesc.CS = computeBytecode;
 	ID3D12PipelineState* psoMipMaps;
-	D3DContext::getCurrent()->getDevice()->CreateComputePipelineState(&psoDesc, __uuidof(ID3D12PipelineState), (void**)&psoMipMaps);
+	result = D3DContext::getCurrent()->getDevice()->CreateComputePipelineState(&psoDesc, __uuidof(ID3D12PipelineState), (void**)&psoMipMaps);
+	if (FAILED(result))
+	{
+		std::cout << "Failed to create compute PSO.. " << std::endl;
+		return false;
+	}
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC srcTextureSRVDesc = {};
 	srcTextureSRVDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -199,13 +228,15 @@ bool Texture2D::generateMipmaps(ID3D12Resource* resource, int numMipMaps, int wi
 	//GPU handle for the first descriptor on the descriptor heap, used to initialize the descriptor tables
 	CD3DX12_GPU_DESCRIPTOR_HANDLE currentGPUHandle(descriptorHeap->GetGPUDescriptorHandleForHeapStart(), 0, descriptorSize);
 
-	D3DContext::getCurrent()->getCommandList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(resource, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
+	CommandList cmdList = D3DContext::getCurrent()->createCommandList();
+
+	cmdList.m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(resource, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 	for (uint32_t TopMip = 0; TopMip < numMipMaps - 1; TopMip++)
 	{
 		//Command list SHOULD have all staging changes submitted from synchronizing and resetting just prior, so this should be fine
-		D3DContext::getCurrent()->getCommandList()->SetComputeRootSignature(mipmapRootSignature);
-		D3DContext::getCurrent()->getCommandList()->SetPipelineState(psoMipMaps);
-		D3DContext::getCurrent()->getCommandList()->SetDescriptorHeaps(1, &descriptorHeap);
+		cmdList.m_commandList->SetComputeRootSignature(mipmapRootSignature);
+		cmdList.m_commandList->SetPipelineState(psoMipMaps);
+		cmdList.m_commandList->SetDescriptorHeaps(1, &descriptorHeap);
 
 		uint32_t dstWidth = std::max(width >> (TopMip + 1), 1);
 		uint32_t dstHeight = std::max(height >> (TopMip + 1), 1);
@@ -222,21 +253,23 @@ bool Texture2D::generateMipmaps(ID3D12Resource* resource, int numMipMaps, int wi
 
 		D3DContext::getCurrent()->getDevice()->CreateUnorderedAccessView(resource, nullptr, &destTextureUAVDesc, currentCPUHandle);
 		currentCPUHandle.Offset(1, descriptorSize);
-		D3DContext::getCurrent()->getCommandList()->SetComputeRoot32BitConstant(0, DWParam(1.0f / dstWidth).Uint, 0);
-		D3DContext::getCurrent()->getCommandList()->SetComputeRoot32BitConstant(0, DWParam(1.0f / dstHeight).Uint, 1);
+		cmdList.m_commandList->SetComputeRoot32BitConstant(0, DWParam(1.0f / dstWidth).Uint, 0);
+		cmdList.m_commandList->SetComputeRoot32BitConstant(0, DWParam(1.0f / dstHeight).Uint, 1);
 
-		D3DContext::getCurrent()->getCommandList()->SetComputeRootDescriptorTable(1, currentGPUHandle);
+		cmdList.m_commandList->SetComputeRootDescriptorTable(1, currentGPUHandle);
 		currentGPUHandle.Offset(1, descriptorSize);
-		D3DContext::getCurrent()->getCommandList()->SetComputeRootDescriptorTable(2, currentGPUHandle);
+		cmdList.m_commandList->SetComputeRootDescriptorTable(2, currentGPUHandle);
 		currentGPUHandle.Offset(1, descriptorSize);
 
-		D3DContext::getCurrent()->getCommandList()->Dispatch(std::max(dstWidth / 8, 1u), std::max(dstHeight / 8, 1u), 1);
+		cmdList.m_commandList->Dispatch(std::max(dstWidth / 8, 1u), std::max(dstHeight / 8, 1u), 1);
 
-		D3DContext::getCurrent()->executeAndSynchronize();
-		D3DContext::getCurrent()->synchronizeAndReset();
+		D3DContext::getCurrent()->submitCommandList(cmdList);
 
 	}
-	D3DContext::getCurrent()->getCommandList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(resource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
+	cmdList.m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(resource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
+	D3DContext::getCurrent()->submitCommandList(cmdList);
 	descriptorHeap->Release();
+	cmdList.m_commandList->Release();
+	cmdList.m_commandAllocator->Release();
 	return true;
 }

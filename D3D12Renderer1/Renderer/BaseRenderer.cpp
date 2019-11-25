@@ -3,11 +3,37 @@
 bool D3D::init(int width, int height, HWND hwnd)
 {
 	HRESULT result;
-	result = D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_12_0, __uuidof(ID3D12Device), (void**)&m_device);
+
+	//Create swapchain
+	IDXGIFactory4* m_factory4;
+	result = CreateDXGIFactory2(0, __uuidof(IDXGIFactory4), (void**)&m_factory4);
 	if (FAILED(result))
 	{
-		std::cout << "Creating D3D12 device failed.. GPU must support feature level 12.0!" << std::endl;
+		std::cout << "Failed to create DXGI factory.. " << std::endl;
 		return false;
+	}
+
+	IDXGIAdapter1* adapter;
+	int adapterIndex = 0;
+	bool adapterFound = false;
+	while (m_factory4->EnumAdapters1(adapterIndex, &adapter) != DXGI_ERROR_NOT_FOUND)
+	{
+		DXGI_ADAPTER_DESC1 adapterDesc;
+		adapter->GetDesc1(&adapterDesc);
+		if (adapterDesc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)
+			continue;
+
+		std::wstring temp = adapterDesc.Description;
+		graphicsAdapterName = std::string(temp.begin(), temp.end());
+
+		result = D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_12_0, __uuidof(ID3D12Device), (void**)&m_device);
+		if (FAILED(result))
+		{
+			std::cout << "Creating D3D12 device failed.. GPU must support feature level 12.0!" << std::endl;
+			return false;
+		}
+		else
+			break;
 	}
 
 	//Create command queue
@@ -22,14 +48,6 @@ bool D3D::init(int width, int height, HWND hwnd)
 		return false;
 	}
 
-	//Create swapchain
-	IDXGIFactory4* m_factory4;
-	result = CreateDXGIFactory2(0, __uuidof(IDXGIFactory4), (void**)&m_factory4);
-	if (FAILED(result))
-	{
-		std::cout << "Failed to create DXGI factory.. " << std::endl;
-		return false;
-	}
 
 	IDXGISwapChain1* swapChain1;	//temporary swapchain which is recasted
 	DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
@@ -37,7 +55,7 @@ bool D3D::init(int width, int height, HWND hwnd)
 	swapChainDesc.Height = height;
 	swapChainDesc.BufferCount = 2;
 	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-	swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+	swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING | DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
 	swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	swapChainDesc.SampleDesc.Count = 1;
 	swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
@@ -52,6 +70,7 @@ bool D3D::init(int width, int height, HWND hwnd)
 	}
 	
 	swapChain1->QueryInterface<IDXGISwapChain3>(&m_swapChain);
+	m_swapChain->SetMaximumFrameLatency(0);	//No frames should be queued. 
 	//Create command allocators and command list
 	for (int i = 0; i < 2; i++)
 	{
@@ -166,9 +185,17 @@ void D3D::destroy()
 	//todo
 }
 
-bool D3D::submitCommandList(ID3D12GraphicsCommandList* commandList)
+bool D3D::submitDefaultCommandList()
 {
-	m_commandQueue->ExecuteCommandLists(1, (ID3D12CommandList**)&commandList);
+	this->executeAndSynchronize();
+	this->synchronizeAndReset();
+	return true;
+}
+
+bool D3D::submitCommandList(CommandList& commandList)
+{
+	commandList.m_commandList->Close();
+	m_commandQueue->ExecuteCommandLists(1, (ID3D12CommandList**)&commandList.m_commandList);
 	m_commandQueue->Signal(m_fences[this->getCurrentBuffer()], m_fenceValues[this->getCurrentBuffer()]);
 	int currentBuffer = this->getCurrentBuffer();
 	if (m_fences[currentBuffer]->GetCompletedValue() < m_fenceValues[currentBuffer])
@@ -179,6 +206,9 @@ bool D3D::submitCommandList(ID3D12GraphicsCommandList* commandList)
 		WaitForSingleObject(fenceEvent, INFINITE);
 	}
 	m_fenceValues[currentBuffer]++;
+
+	commandList.m_commandAllocator->Reset();
+	commandList.m_commandList->Reset(commandList.m_commandAllocator, nullptr);
 
 	return true;
 }
@@ -251,6 +281,22 @@ void D3D::endRenderPass()
 void D3D::bindAllResourceHeaps(ID3D12DescriptorHeap** descriptorHeaps, int numDescriptorHeaps)
 {
 	m_commandList->SetDescriptorHeaps(numDescriptorHeaps, descriptorHeaps);
+}
+
+CommandList D3D::createCommandList()
+{
+	CommandList temp = {};
+	HRESULT result;
+	result = m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, __uuidof(ID3D12CommandAllocator), (void**)&temp.m_commandAllocator);
+	if (FAILED(result))
+		std::cout << "Failed to create command allocator.. " << std::endl;
+
+	result = m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, temp.m_commandAllocator, nullptr, __uuidof(ID3D12GraphicsCommandList), (void**)&temp.m_commandList);
+	if (FAILED(result))
+		std::cout << "Failed to create command list.. " << std::endl;
+
+
+	return temp;
 }
 
 int D3D::getCurrentBuffer()

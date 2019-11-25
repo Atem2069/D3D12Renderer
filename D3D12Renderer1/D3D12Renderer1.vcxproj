@@ -139,6 +139,7 @@
     <ClCompile Include="Renderer\Object.cpp" />
     <ClCompile Include="Renderer\RenderPipeline.cpp" />
     <ClCompile Include="Renderer\ResourceHeap.cpp" />
+    <ClCompile Include="Renderer\ShadowMapping.cpp" />
     <ClCompile Include="Renderer\Texturing.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -157,6 +158,7 @@
     <ClInclude Include="Renderer\Object.h" />
     <ClInclude Include="Renderer\RenderPipeline.h" />
     <ClInclude Include="Renderer\ResourceHeap.h" />
+    <ClInclude Include="Renderer\ShadowMapping.h" />
     <ClInclude Include="Renderer\Texturing.h" />
   </ItemGroup>
   <ItemGroup>
@@ -179,6 +181,8 @@
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">GenerateMipMaps</EntryPointName>
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">GenerateMipMaps</EntryPointName>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
     </FxCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

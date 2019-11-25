@@ -109,11 +109,12 @@ bool RenderPipeline::initWithRootParameters(std::string vertexPath, std::string 
 	CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
 	rootSignatureDesc.Init(numRootParameters, rootParameters, numSamplers, m_samplers, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
-	ID3DBlob* signature;
-	result = D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, nullptr);
+	ID3DBlob* signature, *sigError;
+	result = D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &sigError);
 	if (FAILED(result))
 	{
 		std::cout << "Failed to serialize root signature.. " << std::endl;
+		std::cout << (char*)sigError->GetBufferPointer() << std::endl;
 		return false;
 	}
 
@@ -133,7 +134,7 @@ bool RenderPipeline::initWithRootParameters(std::string vertexPath, std::string 
 	if (FAILED(result))
 	{
 		std::cout << "Failed to compile vertex shader.. " << std::endl;
-		OutputDebugStringA((LPCSTR)error->GetBufferPointer());
+		std::cout << (char*)error->GetBufferPointer();
 		return false;
 	}
 
@@ -149,7 +150,7 @@ bool RenderPipeline::initWithRootParameters(std::string vertexPath, std::string 
 	if (FAILED(result))
 	{
 		std::cout << "Failed to compile pixel shader.. " << std::endl;
-		OutputDebugStringA((LPCSTR)error->GetBufferPointer());
+		std::cout << (char*)error->GetBufferPointer();
 		return false;
 	}
 
