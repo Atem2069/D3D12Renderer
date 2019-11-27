@@ -19,6 +19,9 @@
     <Filter Include="imgui">
       <UniqueIdentifier>{4648bbf0-1515-4867-b602-62c0cc8dc454}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Shaders\Shadow mapping">
+      <UniqueIdentifier>{a5a68af9-129a-4339-851d-48ba9db7fdc2}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -132,6 +135,12 @@
     </FxCompile>
     <FxCompile Include="Shaders\generateMipsCompute.hlsl">
       <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\Shadows\vertexShader.hlsl">
+      <Filter>Shaders\Shadow mapping</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\Shadows\pixelShader.hlsl">
+      <Filter>Shaders\Shadow mapping</Filter>
     </FxCompile>
   </ItemGroup>
 </Project>

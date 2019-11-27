@@ -164,6 +164,14 @@ void Object::destroy()
 	//todo lol
 }
 
+void Object::draw()
+{
+	D3DContext::getCurrent()->getCommandList()->IASetVertexBuffers(0, 1, &m_vertexBufferView);
+	D3DContext::getCurrent()->getCommandList()->IASetIndexBuffer(&m_indexBufferView);
+	for (int i = 0; i < m_meshes.size(); i++)
+		D3DContext::getCurrent()->getCommandList()->DrawIndexedInstanced(m_meshes[i].m_numIndices, 1, m_meshes[i].m_baseIndexLocation, m_meshes[i].m_baseVertexLocation, 0);
+}
+
 void Object::draw(ResourceHeap& textureHeap)
 {
 	D3DContext::getCurrent()->getCommandList()->IASetVertexBuffers(0, 1, &m_vertexBufferView);

@@ -13,6 +13,7 @@
 #include "Renderer/Object.h"
 #include "Renderer/ResourceHeap.h"
 #include "Renderer/ConstantBuffer.h"
+#include "Renderer/ShadowMapping.h"
 
 #include <imgui.h>
 #include <imgui_impl_dx12.h>
@@ -73,14 +74,8 @@ int main()
 	ImGui_ImplGlfw_InitForVulkan(m_window, true);
 	ImGui_ImplDX12_Init(D3DContext::getCurrent()->getDevice(), 2, DXGI_FORMAT_R8G8B8A8_UNORM, baseResHeapDescHandle, baseResHeapDescGPUHandle);
 
-	D3D12_ROOT_PARAMETER m_rootParameters[3] = {};
-	m_rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-	m_rootParameters[0].Descriptor = CD3DX12_ROOT_DESCRIPTOR(0, 0);
-	m_rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 
-	m_rootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-	m_rootParameters[1].Descriptor = CD3DX12_ROOT_DESCRIPTOR(0, 0);
-	m_rootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	//root parameters all need cleaning up. 
 
 	D3D12_DESCRIPTOR_RANGE texRange = {};
 	texRange.NumDescriptors = 1;
@@ -89,45 +84,81 @@ int main()
 	texRange.RegisterSpace = 0;
 	texRange.BaseShaderRegister = 0;
 
+	D3D12_DESCRIPTOR_RANGE shadowTexRange = {};
+	shadowTexRange.NumDescriptors = 1;;
+	shadowTexRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+	shadowTexRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	shadowTexRange.RegisterSpace = 0;
+	shadowTexRange.BaseShaderRegister = 1;
+
 	D3D12_ROOT_DESCRIPTOR_TABLE texTable = {};
 	texTable.NumDescriptorRanges = 1;
 	texTable.pDescriptorRanges = &texRange;
+
+	D3D12_ROOT_PARAMETER m_rootParameters[5] = {};
+	m_rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	m_rootParameters[0].Descriptor = CD3DX12_ROOT_DESCRIPTOR(0, 0);
+	m_rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+
+	m_rootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	m_rootParameters[1].Descriptor = CD3DX12_ROOT_DESCRIPTOR(0, 0);
+	m_rootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
 	m_rootParameters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 	m_rootParameters[2].DescriptorTable = texTable;
 	m_rootParameters[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-	D3D12_STATIC_SAMPLER_DESC m_samplerDesc = {};
-	m_samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	m_samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	m_samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	m_samplerDesc.Filter = D3D12_FILTER_ANISOTROPIC;
-	m_samplerDesc.MaxAnisotropy = 16;
-	m_samplerDesc.ShaderRegister = 0;
-	m_samplerDesc.MinLOD = 0;
-	m_samplerDesc.MaxLOD = D3D12_FLOAT32_MAX;
-	m_samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	m_rootParameters[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	m_rootParameters[3].DescriptorTable = CD3DX12_ROOT_DESCRIPTOR_TABLE(1, &shadowTexRange);
+	m_rootParameters[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+	m_rootParameters[4].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	m_rootParameters[4].Descriptor = CD3DX12_ROOT_DESCRIPTOR(1, 0);
+	m_rootParameters[4].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+
+	D3D12_STATIC_SAMPLER_DESC m_samplerDesc[2] = {};
+	m_samplerDesc[0].AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	m_samplerDesc[0].AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	m_samplerDesc[0].AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	m_samplerDesc[0].Filter = D3D12_FILTER_ANISOTROPIC;
+	m_samplerDesc[0].MaxAnisotropy = 16;
+	m_samplerDesc[0].ShaderRegister = 0;
+	m_samplerDesc[0].MinLOD = 0;
+	m_samplerDesc[0].MaxLOD = D3D12_FLOAT32_MAX;
+	m_samplerDesc[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+	m_samplerDesc[1].AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+	m_samplerDesc[1].AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+	m_samplerDesc[1].AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+	m_samplerDesc[1].Filter = D3D12_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
+	m_samplerDesc[1].ComparisonFunc = D3D12_COMPARISON_FUNC_GREATER;
+	m_samplerDesc[1].MinLOD = 0;
+	m_samplerDesc[1].MaxLOD = 0;
+	m_samplerDesc[1].MaxAnisotropy = 0;
+	m_samplerDesc[1].ShaderRegister = 1;
+	m_samplerDesc[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 	
 
 	RenderPipeline m_pipeline;
-	if(!m_pipeline.initWithRootParameters(R"(Shaders\basicVertex.hlsl)",R"(Shaders\basicPixel.hlsl)",m_rootParameters,3,&m_samplerDesc,1))
+	if(!m_pipeline.initWithRootParameters(R"(Shaders\basicVertex.hlsl)",R"(Shaders\basicPixel.hlsl)",m_rootParameters,5,m_samplerDesc,2))
 		return -1;
 
 	ResourceHeap m_objectsResourceHeap;
 	if (!m_objectsResourceHeap.init(65535))
 		return -1;
 
+
 	Object m_object;
-	if (!m_object.init(R"(Models\sponza\sponza.obj)", m_objectsResourceHeap))
+	if (!m_object.init(R"(Models\gallery\gallery.obj)", m_objectsResourceHeap))
 		return -1;
 	Object m_object2;
-	if (!m_object2.init(R"(Models\materialball\export3dcoat.obj)", m_objectsResourceHeap))
+	if (!m_object2.init(R"(Models\teapot.obj)", m_objectsResourceHeap))
 		return -1;
 	BasicCamera m_basicCamera = {};
 	XMVECTOR cameraPosition = XMVectorSet(0, 0, 0, 1);
 	XMVECTOR cameraEye = XMVectorSet(0, 0, 1, 1);
 	XMVECTOR cameraUp = XMVectorSet(0, 1, 0, 1);
-	m_basicCamera.projection = XMMatrixPerspectiveFovLH(XMConvertToRadians(60.0f), (float)Width / (float)Height, 1.0f, 10000.0f);
+	m_basicCamera.projection = XMMatrixPerspectiveFovLH(XMConvertToRadians(60.0f), (float)Width / (float)Height, 0.1f, 1000.0f);
 	m_basicCamera.view = XMMatrixLookAtLH(cameraPosition, cameraPosition + cameraEye, XMVectorSet(0, 1, 0, 1));
 
 	ConstantBuffer m_cameraBuffer;;
@@ -140,13 +171,17 @@ int main()
 	if (!m_lightBuffer.init(&m_light, sizeof(LightBuffer)))
 		return -1;
 
+	DirectionalShadowMap m_directionalShadowMap;
+	if (!m_directionalShadowMap.init(4096, 4096, 25, 25, m_light.lightDirection, m_objectsResourceHeap))
+		return -1;
+
 	D3DContext::getCurrent()->executeAndSynchronize();	//Execute staging changes to CMD list.
 
 	double lastTime = 0, currentTime = glfwGetTime(), deltaTime = 1;
 	double cpuLastTime = 0, cpuCurrentTime = glfwGetTime(), cpuDeltaTime = 0;
 	double gpuLastTime = 0, gpuCurrentTime = glfwGetTime(), gpuDeltaTime = 0;
 	float pitch = 0, yaw = 0;
-	float cameraSpeed = 250.0f;
+	float cameraSpeed = 25.0f;
 	XMFLOAT4 temp_imguiPosition;
 	while (!glfwWindowShouldClose(m_window))
 	{
@@ -177,6 +212,14 @@ int main()
 		}
 		ImGui::End();
 
+		//Shadowmap pass
+		m_directionalShadowMap.beginFrame(m_light.lightDirection);
+		m_object.draw();
+		m_object2.draw();
+		m_directionalShadowMap.endFrame();
+
+		//D3DContext::getCurrent()->submitDefaultCommandList();
+
 		D3DContext::getCurrent()->beginRenderPass(0.564f, 0.8f, 0.976f, 1.f);
 
 		//CPU update
@@ -191,6 +234,7 @@ int main()
 		m_pipeline.bind();
 		m_cameraBuffer.bind(0);
 		m_lightBuffer.bind(1);
+		m_directionalShadowMap.bind(4,3, m_objectsResourceHeap);
 		m_object.draw(m_objectsResourceHeap);
 		m_object2.draw(m_objectsResourceHeap);
 

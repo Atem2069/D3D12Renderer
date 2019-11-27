@@ -16,13 +16,17 @@ public:
 	bool init(float width, float height, float orthoWidth, float orthoHeight, XMFLOAT4 lightDirection, ResourceHeap& objectsResourceHeap);
 	void destroy();
 
-	void beginFrame();
+	void beginFrame(XMFLOAT4 lightDirection);
 	void endFrame();
+
+	void bind(int cbufferBinding, int rootParameterIndex, ResourceHeap& resourceHeap);
+	int m_descriptorOffset;
 private:
 	ID3D12DescriptorHeap* m_dsvDescriptorHeap;
 	ID3D12Resource* m_shadowMapTex;
 	float m_width, m_height;
 	D3D12_VIEWPORT m_viewport;
+	D3D12_RECT m_scissorRect;
 
 	LightSpaceCamera m_lightCamera;
 	ConstantBuffer m_cameraUploadBuffer;

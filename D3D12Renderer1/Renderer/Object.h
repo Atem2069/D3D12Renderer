@@ -31,6 +31,7 @@ public:
 	bool init(std::string filePath, ResourceHeap& textureHeap);
 	void destroy();
 
+	void draw();
 	void draw(ResourceHeap& resourceHeap);
 
 	int m_faces = 0;

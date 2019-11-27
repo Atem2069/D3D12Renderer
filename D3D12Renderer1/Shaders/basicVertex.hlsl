@@ -12,6 +12,7 @@ struct VS_OUT
 	float2 texcoord : TEXCOORD;
 	float4 camerapos : CAMERAPOS;
 	float3 fragpos : FRAGPOS;
+	float4 fragposlightspace : FRAGPOSLIGHTSPACE;
 };
 
 cbuffer camera : register(b0)
@@ -21,9 +22,10 @@ cbuffer camera : register(b0)
 	float4 position;
 }
 
-cbuffer object : register(b1)
+cbuffer shadow : register(b1)
 {
-	matrix model;
+	matrix shadowProj;
+	matrix shadowView;
 }
 
 VS_OUT main(VS_INPUT input)
@@ -37,5 +39,8 @@ VS_OUT main(VS_INPUT input)
 	output.texcoord = input.texcoord;
 	output.camerapos = position;
 	output.fragpos = input.position.xyz;
+
+	matrix shadowTransMatrix = mul(shadowProj, shadowView);
+	output.fragposlightspace = mul(shadowTransMatrix, float4(input.position, 1.0f));
 	return output;
 }
