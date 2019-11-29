@@ -14,6 +14,7 @@ public:
 	void update(void* data, size_t dataSize);
 
 	void bind(int rootParameterIndex);
+	void bind(int rootParameterIndex, CommandList commandList);
 
 	int getDescriptorLocation();
 private:

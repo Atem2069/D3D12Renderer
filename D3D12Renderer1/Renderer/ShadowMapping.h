@@ -19,6 +19,9 @@ public:
 	void beginFrame(XMFLOAT4 lightDirection);
 	void endFrame();
 
+	void beginFrame(XMFLOAT4 lightDirection, CommandList commandList);
+	void endFrame(CommandList commandList);
+
 	void bind(int cbufferBinding, int rootParameterIndex, ResourceHeap& resourceHeap);
 	int m_descriptorOffset;
 private:

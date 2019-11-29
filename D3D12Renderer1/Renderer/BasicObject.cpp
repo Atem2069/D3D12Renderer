@@ -24,9 +24,9 @@ bool BasicObject::init(Vertex* vertices, int noVertices)
 	vertexData.RowPitch = noVertices * sizeof(Vertex);
 	vertexData.SlicePitch = noVertices * sizeof(Vertex);
 
-	UpdateSubresources(D3DContext::getCurrent()->getCommandList(), m_vertexBuffer, m_uploadBuffer, 0, 0, 1, &vertexData);
+	UpdateSubresources(D3DContext::getCurrent()->getCurrentCommandList().m_commandList, m_vertexBuffer, m_uploadBuffer, 0, 0, 1, &vertexData);
 
-	D3DContext::getCurrent()->getCommandList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_vertexBuffer, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER));
+	D3DContext::getCurrent()->getCurrentCommandList().m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_vertexBuffer, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER));
 
 	m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
 	m_vertexBufferView.SizeInBytes = noVertices * sizeof(Vertex);
@@ -42,8 +42,8 @@ void BasicObject::destroy()
 
 void BasicObject::draw()
 {
-	D3DContext::getCurrent()->getCommandList()->IASetVertexBuffers(0, 1, &m_vertexBufferView);
-	D3DContext::getCurrent()->getCommandList()->DrawInstanced(m_noVertices, 1, 0, 0);
+	D3DContext::getCurrent()->getCurrentCommandList().m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
+	D3DContext::getCurrent()->getCurrentCommandList().m_commandList->DrawInstanced(m_noVertices, 1, 0, 0);
 	if (!m_intermediateBufferDestroyed)
 	{
 		m_uploadBuffer->Release();

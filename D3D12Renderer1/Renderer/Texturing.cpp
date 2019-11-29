@@ -57,8 +57,8 @@ bool Texture2D::init(std::string texturePath, ResourceHeap& resourceHeap)
 	textureData.RowPitch = width * 4;
 	textureData.SlicePitch = 0;
 
-	UpdateSubresources(D3DContext::getCurrent()->getCommandList(), m_textureStorageHeap, m_textureUploadHeap, 0, 0, 1, &textureData);
-	D3DContext::getCurrent()->getCommandList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_textureStorageHeap, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
+	UpdateSubresources(D3DContext::getCurrent()->getCurrentCommandList().m_commandList, m_textureStorageHeap, m_textureUploadHeap, 0, 0, 1, &textureData);
+	D3DContext::getCurrent()->getCurrentCommandList().m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_textureStorageHeap, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
 
 	stbi_image_free(imgData);
 	delete[] rgbaImageData;
@@ -80,7 +80,7 @@ bool Texture2D::init(std::string texturePath, ResourceHeap& resourceHeap)
 	m_descriptorOffset = resourceHeap.numBoundDescriptors;
 	resourceHeap.numBoundDescriptors++;
 
-	D3DContext::getCurrent()->submitDefaultCommandList();
+	D3DContext::getCurrent()->submitCurrentlySetCommandList();
 
 	if (!Texture2D::generateMipmaps(m_textureStorageHeap, tex2DDesc.MipLevels, width, height))
 	{
@@ -101,7 +101,7 @@ void Texture2D::destroy()
 
 void Texture2D::bind(int rootParameterIndex)
 {
-	D3DContext::getCurrent()->getCommandList()->SetGraphicsRootShaderResourceView(rootParameterIndex, m_textureAddress);
+	D3DContext::getCurrent()->getCurrentCommandList().m_commandList->SetGraphicsRootShaderResourceView(rootParameterIndex, m_textureAddress);
 }
 
 void Texture2D::unpackRGBToRGBA(int width, int height, unsigned char * input, unsigned char * output)	//(un)safe method of unpacking RGB to RGBA, feat char pointers
@@ -270,6 +270,6 @@ bool Texture2D::generateMipmaps(ID3D12Resource* resource, int numMipMaps, int wi
 	D3DContext::getCurrent()->submitCommandList(cmdList);
 	descriptorHeap->Release();
 	cmdList.m_commandList->Release();
-	cmdList.m_commandAllocator->Release();
+	cmdList.m_commandAllocators[0]->Release();
 	return true;
 }

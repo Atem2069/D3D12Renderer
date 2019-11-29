@@ -117,9 +117,9 @@ bool Object::init(std::string filePath, ResourceHeap& textureHeap)
 	vertexData.RowPitch = m_vertices.size() * sizeof(Vertex);
 	vertexData.SlicePitch = vertexData.RowPitch;
 
-	UpdateSubresources(D3DContext::getCurrent()->getCommandList(), m_vertexBufferHeap, m_vertexBufferUploadHeap, 0, 0, 1, &vertexData);
+	UpdateSubresources(D3DContext::getCurrent()->getCurrentCommandList().m_commandList, m_vertexBufferHeap, m_vertexBufferUploadHeap, 0, 0, 1, &vertexData);
 
-	D3DContext::getCurrent()->getCommandList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_vertexBufferHeap, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER));
+	D3DContext::getCurrent()->getCurrentCommandList().m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_vertexBufferHeap, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER));
 
 	m_vertexBufferView = {};
 	m_vertexBufferView.BufferLocation = m_vertexBufferHeap->GetGPUVirtualAddress();
@@ -147,9 +147,9 @@ bool Object::init(std::string filePath, ResourceHeap& textureHeap)
 	indexData.RowPitch = m_indices.size() * sizeof(unsigned int);
 	indexData.SlicePitch = indexData.RowPitch;
 
-	UpdateSubresources(D3DContext::getCurrent()->getCommandList(), m_indexBufferHeap, m_indexBufferUploadHeap, 0, 0, 1, &indexData);
+	UpdateSubresources(D3DContext::getCurrent()->getCurrentCommandList().m_commandList, m_indexBufferHeap, m_indexBufferUploadHeap, 0, 0, 1, &indexData);
 
-	D3DContext::getCurrent()->getCommandList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_indexBufferHeap, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER));
+	D3DContext::getCurrent()->getCurrentCommandList().m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_indexBufferHeap, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER));
 
 	m_indexBufferView = {};
 	m_indexBufferView.BufferLocation = m_indexBufferHeap->GetGPUVirtualAddress();
@@ -166,20 +166,28 @@ void Object::destroy()
 
 void Object::draw()
 {
-	D3DContext::getCurrent()->getCommandList()->IASetVertexBuffers(0, 1, &m_vertexBufferView);
-	D3DContext::getCurrent()->getCommandList()->IASetIndexBuffer(&m_indexBufferView);
+	D3DContext::getCurrent()->getCurrentCommandList().m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
+	D3DContext::getCurrent()->getCurrentCommandList().m_commandList->IASetIndexBuffer(&m_indexBufferView);
 	for (int i = 0; i < m_meshes.size(); i++)
-		D3DContext::getCurrent()->getCommandList()->DrawIndexedInstanced(m_meshes[i].m_numIndices, 1, m_meshes[i].m_baseIndexLocation, m_meshes[i].m_baseVertexLocation, 0);
+		D3DContext::getCurrent()->getCurrentCommandList().m_commandList->DrawIndexedInstanced(m_meshes[i].m_numIndices, 1, m_meshes[i].m_baseIndexLocation, m_meshes[i].m_baseVertexLocation, 0);
+}
+
+void Object::draw(CommandList commandList)
+{
+	commandList.m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
+	commandList.m_commandList->IASetIndexBuffer(&m_indexBufferView);
+	for (int i = 0; i < m_meshes.size(); i++)
+		commandList.m_commandList->DrawIndexedInstanced(m_meshes[i].m_numIndices, 1, m_meshes[i].m_baseIndexLocation, m_meshes[i].m_baseVertexLocation, 0);
 }
 
 void Object::draw(ResourceHeap& textureHeap)
 {
-	D3DContext::getCurrent()->getCommandList()->IASetVertexBuffers(0, 1, &m_vertexBufferView);
-	D3DContext::getCurrent()->getCommandList()->IASetIndexBuffer(&m_indexBufferView);
+	D3DContext::getCurrent()->getCurrentCommandList().m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
+	D3DContext::getCurrent()->getCurrentCommandList().m_commandList->IASetIndexBuffer(&m_indexBufferView);
 	for (int i = 0; i < m_meshes.size(); i++)
 	{
 		if(m_meshes[i].m_material.m_albedoTextureLoaded)
 			textureHeap.bindDescriptorTable(2, m_meshes[i].m_material.m_albedoTexture.m_descriptorOffset,0);
-		D3DContext::getCurrent()->getCommandList()->DrawIndexedInstanced(m_meshes[i].m_numIndices, 1, m_meshes[i].m_baseIndexLocation, m_meshes[i].m_baseVertexLocation, 0);
+		D3DContext::getCurrent()->getCurrentCommandList().m_commandList->DrawIndexedInstanced(m_meshes[i].m_numIndices, 1, m_meshes[i].m_baseIndexLocation, m_meshes[i].m_baseVertexLocation, 0);
 	}
 }

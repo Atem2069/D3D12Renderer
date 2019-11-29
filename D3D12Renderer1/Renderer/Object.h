@@ -32,6 +32,7 @@ public:
 	void destroy();
 
 	void draw();
+	void draw(CommandList commandList);
 	void draw(ResourceHeap& resourceHeap);
 
 	int m_faces = 0;

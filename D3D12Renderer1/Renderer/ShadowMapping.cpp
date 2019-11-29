@@ -81,7 +81,7 @@ bool DirectionalShadowMap::init(float width, float height, float orthoWidth, flo
 	rasterizerStateDesc.CullMode = D3D12_CULL_MODE_BACK;
 	rasterizerStateDesc.DepthBias = 0;
 	rasterizerStateDesc.DepthBiasClamp = 0;
-	rasterizerStateDesc.DepthClipEnable = TRUE;
+	rasterizerStateDesc.DepthClipEnable = FALSE;
 	rasterizerStateDesc.FillMode = D3D12_FILL_MODE_SOLID;
 	rasterizerStateDesc.ForcedSampleCount = 0;
 	rasterizerStateDesc.FrontCounterClockwise = FALSE;
@@ -175,7 +175,7 @@ bool DirectionalShadowMap::init(float width, float height, float orthoWidth, flo
 	m_descriptorOffset = objectsResourceHeap.numBoundDescriptors;
 	objectsResourceHeap.numBoundDescriptors++;
 	
-	D3DContext::getCurrent()->getCommandList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMapTex, D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
+	D3DContext::getCurrent()->getCurrentCommandList().m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMapTex, D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
 
 	D3DContext::getCurrent()->getDevice()->CreateShaderResourceView(m_shadowMapTex, &srvDesc, resourceHeapDescriptorHandle);
 
@@ -206,25 +206,51 @@ void DirectionalShadowMap::beginFrame(XMFLOAT4 lightDirection)
 	m_lightCamera.m_view = XMMatrixLookAtLH(XMVectorNegate(XMLoadFloat4(&lightDirection)), XMLoadFloat4(&lightDirection), XMVectorSet(0, 1, 0, 1));
 	m_cameraUploadBuffer.update(&m_lightCamera, sizeof(LightSpaceCamera));
 
-	D3DContext::getCurrent()->getCommandList()->SetPipelineState(m_depthOnlyPipelineState);
-	D3DContext::getCurrent()->getCommandList()->SetGraphicsRootSignature(m_depthOnlyRootSignature);
-	D3DContext::getCurrent()->getCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	D3DContext::getCurrent()->getCurrentCommandList().m_commandList->SetPipelineState(m_depthOnlyPipelineState);
+	D3DContext::getCurrent()->getCurrentCommandList().m_commandList->SetGraphicsRootSignature(m_depthOnlyRootSignature);
+	D3DContext::getCurrent()->getCurrentCommandList().m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	D3DContext::getCurrent()->getCommandList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMapTex, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_DEPTH_WRITE));
+	D3DContext::getCurrent()->getCurrentCommandList().m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMapTex, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_DEPTH_WRITE));
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvDescriptorHandle(m_dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 
-	D3DContext::getCurrent()->getCommandList()->OMSetRenderTargets(0, nullptr, FALSE, &dsvDescriptorHandle);
-	D3DContext::getCurrent()->getCommandList()->ClearDepthStencilView(dsvDescriptorHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+	D3DContext::getCurrent()->getCurrentCommandList().m_commandList->OMSetRenderTargets(0, nullptr, FALSE, &dsvDescriptorHandle);
+	D3DContext::getCurrent()->getCurrentCommandList().m_commandList->ClearDepthStencilView(dsvDescriptorHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
-	D3DContext::getCurrent()->getCommandList()->RSSetViewports(1, &m_viewport);
-	D3DContext::getCurrent()->getCommandList()->RSSetScissorRects(1, &m_scissorRect);
+	D3DContext::getCurrent()->getCurrentCommandList().m_commandList->RSSetViewports(1, &m_viewport);
+	D3DContext::getCurrent()->getCurrentCommandList().m_commandList->RSSetScissorRects(1, &m_scissorRect);
 
 	m_cameraUploadBuffer.bind(0);
 }
 
 void DirectionalShadowMap::endFrame()
 {
-	D3DContext::getCurrent()->getCommandList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMapTex, D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
+	D3DContext::getCurrent()->getCurrentCommandList().m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMapTex, D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
+}
+
+void DirectionalShadowMap::beginFrame(XMFLOAT4 lightDirection, CommandList commandList)
+{
+	m_lightCamera.m_view = XMMatrixLookAtLH(XMVectorNegate(XMLoadFloat4(&lightDirection)), XMLoadFloat4(&lightDirection), XMVectorSet(0, 1, 0, 1));
+	m_cameraUploadBuffer.update(&m_lightCamera, sizeof(LightSpaceCamera));
+
+	commandList.m_commandList->SetPipelineState(m_depthOnlyPipelineState);
+	commandList.m_commandList->SetGraphicsRootSignature(m_depthOnlyRootSignature);
+	commandList.m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	commandList.m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMapTex, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_DEPTH_WRITE));
+	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvDescriptorHandle(m_dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+
+	commandList.m_commandList->OMSetRenderTargets(0, nullptr, FALSE, &dsvDescriptorHandle);
+	commandList.m_commandList->ClearDepthStencilView(dsvDescriptorHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+
+	commandList.m_commandList->RSSetViewports(1, &m_viewport);
+	commandList.m_commandList->RSSetScissorRects(1, &m_scissorRect);
+
+	m_cameraUploadBuffer.bind(0,commandList);
+}
+
+void DirectionalShadowMap::endFrame(CommandList commandList)
+{
+	D3DContext::getCurrent()->getCurrentCommandList().m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMapTex, D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
 }
 
 void DirectionalShadowMap::bind(int cbufferBinding, int rootParameterIndex, ResourceHeap& resourceHeap)

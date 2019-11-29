@@ -18,7 +18,7 @@ Texture2D shadowMapTex : register(t1);
 SamplerState samplerState : register(s0);
 SamplerComparisonState shadowSamplerState : register(s1);
 
-#define BIAS 0.000006
+#define BIAS 0.0006
 
 float shadowCalculation(float4 fragPosLightSpace, float3 normal, float3 lightDir)
 {

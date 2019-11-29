@@ -39,7 +39,7 @@ bool D3D::init(int width, int height, HWND hwnd)
 	//Create command queue
 	D3D12_COMMAND_QUEUE_DESC cmdQueueDesc = {};
 	cmdQueueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-	cmdQueueDesc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_HIGH;
+	cmdQueueDesc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
 	cmdQueueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 	result = m_device->CreateCommandQueue(&cmdQueueDesc, __uuidof(ID3D12CommandQueue), (void**)&m_commandQueue);
 	if (FAILED(result))
@@ -55,7 +55,7 @@ bool D3D::init(int width, int height, HWND hwnd)
 	swapChainDesc.Height = height;
 	swapChainDesc.BufferCount = 2;
 	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-	swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING | DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
+	swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
 	swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	swapChainDesc.SampleDesc.Count = 1;
 	swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
@@ -70,21 +70,7 @@ bool D3D::init(int width, int height, HWND hwnd)
 	}
 	
 	swapChain1->QueryInterface<IDXGISwapChain3>(&m_swapChain);
-	m_swapChain->SetMaximumFrameLatency(0);	//No frames should be queued. 
-	//Create command allocators and command list
-	for (int i = 0; i < 2; i++)
-	{
-		result = m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, __uuidof(ID3D12CommandAllocator), (void**)&m_commandAllocators[i]);
-		if (FAILED(result))
-		{
-			std::cout << "Failed on creating command allocator " << i << std::endl;
-			return false;
-		}
-	}
-	
-	result = m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_commandAllocators[0], nullptr, __uuidof(ID3D12GraphicsCommandList), (void**)&m_commandList);
-	if (FAILED(result))
-		return false;
+	//m_swapChain->SetMaximumFrameLatency(1);	//No frames should be queued. 
 
 	//Creating rendertargets
 
@@ -185,11 +171,9 @@ void D3D::destroy()
 	//todo
 }
 
-bool D3D::submitDefaultCommandList()
+bool D3D::submitCurrentlySetCommandList()
 {
-	this->executeAndSynchronize();
-	this->synchronizeAndReset();
-	return true;
+	return this->submitCommandList(m_currentCommandList);
 }
 
 bool D3D::submitCommandList(CommandList& commandList)
@@ -207,24 +191,31 @@ bool D3D::submitCommandList(CommandList& commandList)
 	}
 	m_fenceValues[currentBuffer]++;
 
-	commandList.m_commandAllocator->Reset();
-	commandList.m_commandList->Reset(commandList.m_commandAllocator, nullptr);
+	commandList.m_commandAllocators[this->getCurrentBuffer()]->Reset();
+	commandList.m_commandList->Reset(commandList.m_commandAllocators[this->getCurrentBuffer()], nullptr);
 
 	return true;
 }
 
-bool D3D::executeAndSynchronize()
+bool D3D::presentWithCommandLists(CommandList * commandLists, int numCommandLists)	//This is all terrible pls refactor
 {
-	m_commandList->Close();
-	m_commandQueue->ExecuteCommandLists(1, (ID3D12CommandList**)&m_commandList);
-	int currentBuffer = this->getCurrentBuffer();
-	m_fenceValues[currentBuffer]++;
-	m_commandQueue->Signal(m_fences[currentBuffer], m_fenceValues[currentBuffer]);
-	return true;
-}
+	ID3D12CommandList* m_cmdLists[16];
+	for (int i = 0; i < numCommandLists; i++)
+	{
+		commandLists[i].m_commandList->Close();
+		m_cmdLists[i] = commandLists[i].m_commandList;
+	}
 
-bool D3D::synchronizeAndReset()
-{
+	m_commandQueue->ExecuteCommandLists(numCommandLists, m_cmdLists);
+	m_commandQueue->Signal(m_fences[this->getCurrentBuffer()], m_fenceValues[this->getCurrentBuffer()]);
+	HRESULT result = m_swapChain->Present(0, 0);
+	if (FAILED(result))
+	{
+		std::cout << "DXGI Present Error : " << result << std::endl;
+		std::cout << m_device->GetDeviceRemovedReason() << std::endl;
+		return false;
+	}
+
 	int currentBuffer = this->getCurrentBuffer();
 	if (m_fences[currentBuffer]->GetCompletedValue() < m_fenceValues[currentBuffer])
 	{
@@ -235,63 +226,55 @@ bool D3D::synchronizeAndReset()
 	}
 	m_fenceValues[currentBuffer]++;
 
-	m_commandAllocators[currentBuffer]->Reset();
-	m_commandList->Reset(m_commandAllocators[currentBuffer], nullptr);
-	return true;
-}
-
-bool D3D::executeAndPresent(bool vsync)
-{
-	m_commandList->Close();
-	m_commandQueue->ExecuteCommandLists(1, (ID3D12CommandList**)&m_commandList);
-	m_commandQueue->Signal(m_fences[this->getCurrentBuffer()], m_fenceValues[this->getCurrentBuffer()]);
-	HRESULT result = m_swapChain->Present((int)vsync, 0);
-	if (FAILED(result))
+	for (int i = 0; i < numCommandLists; i++)
 	{
-		std::cout << "DXGI Present Error : " << result << std::endl;
-		std::cout << m_device->GetDeviceRemovedReason() << std::endl;
-		return false;
+		commandLists[i].m_commandAllocators[this->getCurrentBuffer()]->Reset();
+		commandLists[i].m_commandList->Reset(commandLists[i].m_commandAllocators[this->getCurrentBuffer()], nullptr);
 	}
 	return true;
 }
+
 
 void D3D::beginRenderPass(float r, float g, float b, float a)
 {
 	int currentBuffer = this->getCurrentBuffer();
 	float clearColor[4] = { r,g,b,a };
 
-	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[this->getCurrentBuffer()], D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
+	m_currentCommandList.m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[this->getCurrentBuffer()], D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandle(m_renderTargetDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), currentBuffer, m_renderTargetDescriptorSize);
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvDescriptorHandle(m_depthStencilDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 
-	m_commandList->OMSetRenderTargets(1, &rtvDescriptorHandle, FALSE, &dsvDescriptorHandle);
-	m_commandList->ClearRenderTargetView(rtvDescriptorHandle, clearColor, 0, nullptr);
-	m_commandList->ClearDepthStencilView(dsvDescriptorHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+	m_currentCommandList.m_commandList->OMSetRenderTargets(1, &rtvDescriptorHandle, FALSE, &dsvDescriptorHandle);
+	m_currentCommandList.m_commandList->ClearRenderTargetView(rtvDescriptorHandle, clearColor, 0, nullptr);
+	m_currentCommandList.m_commandList->ClearDepthStencilView(dsvDescriptorHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
-	m_commandList->RSSetViewports(1, &m_viewport);
-	m_commandList->RSSetScissorRects(1, &m_scissorRect);
+	m_currentCommandList.m_commandList->RSSetViewports(1, &m_viewport);
+	m_currentCommandList.m_commandList->RSSetScissorRects(1, &m_scissorRect);
 	
 }
 
 void D3D::endRenderPass()
 {
-	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[this->getCurrentBuffer()], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+	m_currentCommandList.m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[this->getCurrentBuffer()], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 }
 
 void D3D::bindAllResourceHeaps(ID3D12DescriptorHeap** descriptorHeaps, int numDescriptorHeaps)
 {
-	m_commandList->SetDescriptorHeaps(numDescriptorHeaps, descriptorHeaps);
+	m_currentCommandList.m_commandList->SetDescriptorHeaps(numDescriptorHeaps, descriptorHeaps);
 }
 
 CommandList D3D::createCommandList()
 {
 	CommandList temp = {};
 	HRESULT result;
-	result = m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, __uuidof(ID3D12CommandAllocator), (void**)&temp.m_commandAllocator);
-	if (FAILED(result))
-		std::cout << "Failed to create command allocator.. " << std::endl;
+	for (int i = 0; i < 2; i++)
+	{
+		result = m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, __uuidof(ID3D12CommandAllocator), (void**)&temp.m_commandAllocators[i]);
+		if (FAILED(result))
+			std::cout << "Failed to create command allocator.. " << std::endl;
+	}
 
-	result = m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, temp.m_commandAllocator, nullptr, __uuidof(ID3D12GraphicsCommandList), (void**)&temp.m_commandList);
+	result = m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, temp.m_commandAllocators[0], nullptr, __uuidof(ID3D12GraphicsCommandList), (void**)&temp.m_commandList);
 	if (FAILED(result))
 		std::cout << "Failed to create command list.. " << std::endl;
 
@@ -304,14 +287,19 @@ int D3D::getCurrentBuffer()
 	return m_swapChain->GetCurrentBackBufferIndex();
 }
 
+const CommandList & D3D::getCurrentCommandList()
+{
+	return m_currentCommandList;
+}
+
+void D3D::setCurrentCommandList(CommandList & commandList)
+{
+	m_currentCommandList = commandList;
+}
+
 ID3D12Device* D3D::getDevice()
 {
 	return m_device;
-}
-
-ID3D12GraphicsCommandList* D3D::getCommandList()
-{
-	return m_commandList;
 }
 
 void D3DContext::Register(D3D& d3d)

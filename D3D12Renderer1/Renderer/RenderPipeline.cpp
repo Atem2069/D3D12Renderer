@@ -232,9 +232,9 @@ void RenderPipeline::destroy()
 
 void RenderPipeline::bind()
 {
-	D3DContext::getCurrent()->getCommandList()->SetPipelineState(m_pipelineState);
-	D3DContext::getCurrent()->getCommandList()->SetGraphicsRootSignature(m_rootSignature);
-	D3DContext::getCurrent()->getCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	D3DContext::getCurrent()->getCurrentCommandList().m_commandList->SetPipelineState(m_pipelineState);
+	D3DContext::getCurrent()->getCurrentCommandList().m_commandList->SetGraphicsRootSignature(m_rootSignature);
+	D3DContext::getCurrent()->getCurrentCommandList().m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
 int RenderPipeline::getVertexRangeBinding()

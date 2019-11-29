@@ -59,6 +59,13 @@ int main()
 		return -1;
 	D3DContext::Register(m_context);
 
+	//Creating command lists for use
+	CommandList m_commandLists[3];
+	for (int i = 0; i < sizeof(m_commandLists) / sizeof(CommandList); i++)
+		m_commandLists[i] = D3DContext::getCurrent()->createCommandList();
+
+	D3DContext::getCurrent()->setCurrentCommandList(m_commandLists[0]);
+
 	ImGui::CreateContext();
 	ImGui::StyleColorsClassic();
 
@@ -149,16 +156,16 @@ int main()
 
 
 	Object m_object;
-	if (!m_object.init(R"(Models\gallery\gallery.obj)", m_objectsResourceHeap))
+	if (!m_object.init(R"(Models\sponza\sponza.obj)", m_objectsResourceHeap))
 		return -1;
 	Object m_object2;
-	if (!m_object2.init(R"(Models\teapot.obj)", m_objectsResourceHeap))
+	if (!m_object2.init(R"(Models\nanosuit\nanosuit.obj)", m_objectsResourceHeap))
 		return -1;
 	BasicCamera m_basicCamera = {};
 	XMVECTOR cameraPosition = XMVectorSet(0, 0, 0, 1);
 	XMVECTOR cameraEye = XMVectorSet(0, 0, 1, 1);
 	XMVECTOR cameraUp = XMVectorSet(0, 1, 0, 1);
-	m_basicCamera.projection = XMMatrixPerspectiveFovLH(XMConvertToRadians(60.0f), (float)Width / (float)Height, 0.1f, 1000.0f);
+	m_basicCamera.projection = XMMatrixPerspectiveFovLH(XMConvertToRadians(60.0f), (float)Width / (float)Height, 1.0f, 10000.0f);
 	m_basicCamera.view = XMMatrixLookAtLH(cameraPosition, cameraPosition + cameraEye, XMVectorSet(0, 1, 0, 1));
 
 	ConstantBuffer m_cameraBuffer;;
@@ -172,22 +179,22 @@ int main()
 		return -1;
 
 	DirectionalShadowMap m_directionalShadowMap;
-	if (!m_directionalShadowMap.init(4096, 4096, 25, 25, m_light.lightDirection, m_objectsResourceHeap))
+	if (!m_directionalShadowMap.init(4096, 4096, 2048, 2048, m_light.lightDirection, m_objectsResourceHeap))
 		return -1;
 
-	D3DContext::getCurrent()->executeAndSynchronize();	//Execute staging changes to CMD list.
-
+	D3DContext::getCurrent()->submitCurrentlySetCommandList();
 	double lastTime = 0, currentTime = glfwGetTime(), deltaTime = 1;
 	double cpuLastTime = 0, cpuCurrentTime = glfwGetTime(), cpuDeltaTime = 0;
 	double gpuLastTime = 0, gpuCurrentTime = glfwGetTime(), gpuDeltaTime = 0;
 	float pitch = 0, yaw = 0;
-	float cameraSpeed = 25.0f;
+	float cameraSpeed = 250.0f;
 	XMFLOAT4 temp_imguiPosition;
+
 	while (!glfwWindowShouldClose(m_window))
 	{
 		glfwPollEvents();
 
-		D3DContext::getCurrent()->synchronizeAndReset();
+		//D3DContext::getCurrent()->synchronizeAndReset();
 
 		gpuCurrentTime = glfwGetTime();
 		gpuDeltaTime = gpuCurrentTime - gpuLastTime;
@@ -212,11 +219,13 @@ int main()
 		}
 		ImGui::End();
 
+		D3DContext::getCurrent()->setCurrentCommandList(m_commandLists[1]);
 		//Shadowmap pass
 		m_directionalShadowMap.beginFrame(m_light.lightDirection);
 		m_object.draw();
 		m_object2.draw();
 		m_directionalShadowMap.endFrame();
+		D3DContext::getCurrent()->setCurrentCommandList(m_commandLists[0]);
 
 		//D3DContext::getCurrent()->submitDefaultCommandList();
 
@@ -238,11 +247,12 @@ int main()
 		m_object.draw(m_objectsResourceHeap);
 		m_object2.draw(m_objectsResourceHeap);
 
+		//D3DContext::getCurrent()->setCurrentCommandList(m_commandLists[2]);
 		ID3D12DescriptorHeap* baseResHeaps[1] = { m_imguiResourceHeap.getCurrent(0) };
 		D3DContext::getCurrent()->bindAllResourceHeaps(baseResHeaps, 1);
 		ImGui::Render();
-		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), D3DContext::getCurrent()->getCommandList());
-
+		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), D3DContext::getCurrent()->getCurrentCommandList().m_commandList);
+		//D3DContext::getCurrent()->setCurrentCommandList(m_commandLists[0]);
 
 		D3DContext::getCurrent()->endRenderPass();
 
@@ -274,9 +284,9 @@ int main()
 		cpuDeltaTime = cpuCurrentTime - cpuLastTime;
 
 		gpuLastTime = glfwGetTime();
-		if (!D3DContext::getCurrent()->executeAndPresent(false))
-			glfwSetWindowShouldClose(m_window, GLFW_TRUE);
-
+		//if (!D3DContext::getCurrent()->executeAndPresent(false))
+		//	glfwSetWindowShouldClose(m_window, GLFW_TRUE);
+		D3DContext::getCurrent()->presentWithCommandLists(m_commandLists, 2);
 		//Calculate deltatime
 		deltaTime = currentTime - lastTime;
 		lastTime = currentTime;

@@ -81,7 +81,12 @@ void ConstantBuffer::update(void* data, size_t dataSize)
 
 void ConstantBuffer::bind(int rootParameterIndex)
 {
-	D3DContext::getCurrent()->getCommandList()->SetGraphicsRootConstantBufferView(rootParameterIndex, m_constantBufferUploadHeaps[D3DContext::getCurrent()->getCurrentBuffer()]->GetGPUVirtualAddress());
+	D3DContext::getCurrent()->getCurrentCommandList().m_commandList->SetGraphicsRootConstantBufferView(rootParameterIndex, m_constantBufferUploadHeaps[D3DContext::getCurrent()->getCurrentBuffer()]->GetGPUVirtualAddress());
+}
+
+void ConstantBuffer::bind(int rootParameterIndex, CommandList commandList)
+{
+	commandList.m_commandList->SetGraphicsRootConstantBufferView(rootParameterIndex, m_constantBufferUploadHeaps[D3DContext::getCurrent()->getCurrentBuffer()]->GetGPUVirtualAddress());
 }
 
 int ConstantBuffer::getDescriptorLocation()
