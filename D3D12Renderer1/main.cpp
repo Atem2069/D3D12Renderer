@@ -64,7 +64,7 @@ int main()
 	for (int i = 0; i < sizeof(m_commandLists) / sizeof(CommandList); i++)
 		m_commandLists[i] = D3DContext::getCurrent()->createCommandList();
 
-	D3DContext::getCurrent()->setCurrentCommandList(m_commandLists[0]);
+	D3DContext::getCurrent()->setCurrentCommandList(m_commandLists[1]);
 
 	ImGui::CreateContext();
 	ImGui::StyleColorsClassic();
@@ -194,8 +194,6 @@ int main()
 	{
 		glfwPollEvents();
 
-		//D3DContext::getCurrent()->synchronizeAndReset();
-
 		gpuCurrentTime = glfwGetTime();
 		gpuDeltaTime = gpuCurrentTime - gpuLastTime;
 		cpuLastTime = glfwGetTime();
@@ -219,15 +217,13 @@ int main()
 		}
 		ImGui::End();
 
-		D3DContext::getCurrent()->setCurrentCommandList(m_commandLists[1]);
+		D3DContext::getCurrent()->setCurrentCommandList(m_commandLists[0]);
 		//Shadowmap pass
 		m_directionalShadowMap.beginFrame(m_light.lightDirection);
 		m_object.draw();
 		m_object2.draw();
 		m_directionalShadowMap.endFrame();
-		D3DContext::getCurrent()->setCurrentCommandList(m_commandLists[0]);
-
-		//D3DContext::getCurrent()->submitDefaultCommandList();
+		D3DContext::getCurrent()->setCurrentCommandList(m_commandLists[1]);
 
 		D3DContext::getCurrent()->beginRenderPass(0.564f, 0.8f, 0.976f, 1.f);
 
@@ -247,12 +243,10 @@ int main()
 		m_object.draw(m_objectsResourceHeap);
 		m_object2.draw(m_objectsResourceHeap);
 
-		//D3DContext::getCurrent()->setCurrentCommandList(m_commandLists[2]);
 		ID3D12DescriptorHeap* baseResHeaps[1] = { m_imguiResourceHeap.getCurrent(0) };
 		D3DContext::getCurrent()->bindAllResourceHeaps(baseResHeaps, 1);
 		ImGui::Render();
 		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), D3DContext::getCurrent()->getCurrentCommandList().m_commandList);
-		//D3DContext::getCurrent()->setCurrentCommandList(m_commandLists[0]);
 
 		D3DContext::getCurrent()->endRenderPass();
 

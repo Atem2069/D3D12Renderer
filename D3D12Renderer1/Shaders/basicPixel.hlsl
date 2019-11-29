@@ -39,8 +39,6 @@ float shadowCalculation(float4 fragPosLightSpace, float3 normal, float3 lightDir
 	{
 		for (int y = -1; y <= 1; ++y)
 		{
-			//float pcfDepth = shadowTex.Sample(shadowSampler, projCoords.xy + float2(x, y) * texelSize).r;
-			//shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
 			shadow += shadowMapTex.SampleCmpLevelZero(shadowSamplerState, projCoords.xy + float2(x, y)*texelSize, currentDepth - bias).r;
 		}
 	}
