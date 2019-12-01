@@ -253,8 +253,12 @@ void DirectionalShadowMap::endFrame(CommandList commandList)
 	D3DContext::getCurrent()->getCurrentCommandList().m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_shadowMapTex, D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
 }
 
-void DirectionalShadowMap::bind(int cbufferBinding, int rootParameterIndex, ResourceHeap& resourceHeap)
+void DirectionalShadowMap::bindTexture(int rootParameterIndex, ResourceHeap& resourceHeap)
 {
-	m_cameraUploadBuffer.bind(cbufferBinding);
-	resourceHeap.bindDescriptorTable(rootParameterIndex, m_descriptorOffset);
+	resourceHeap.bindDescriptorTable(rootParameterIndex, m_descriptorOffset,0);
+}
+
+void DirectionalShadowMap::bindCamera(int binding)
+{
+	m_cameraUploadBuffer.bind(binding);
 }

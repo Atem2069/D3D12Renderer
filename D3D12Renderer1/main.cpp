@@ -239,7 +239,8 @@ int main()
 		m_pipeline.bind();
 		m_cameraBuffer.bind(0);
 		m_lightBuffer.bind(1);
-		m_directionalShadowMap.bind(4,3, m_objectsResourceHeap);
+		m_directionalShadowMap.bindCamera(4);
+		m_directionalShadowMap.bindTexture(3, m_objectsResourceHeap);
 		m_object.draw(m_objectsResourceHeap);
 		m_object2.draw(m_objectsResourceHeap);
 

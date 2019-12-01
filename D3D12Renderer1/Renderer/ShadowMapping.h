@@ -22,7 +22,8 @@ public:
 	void beginFrame(XMFLOAT4 lightDirection, CommandList commandList);
 	void endFrame(CommandList commandList);
 
-	void bind(int cbufferBinding, int rootParameterIndex, ResourceHeap& resourceHeap);
+	void bindTexture(int rootParameterIndex, ResourceHeap& resourceHeap);
+	void bindCamera(int binding);
 	int m_descriptorOffset;
 private:
 	ID3D12DescriptorHeap* m_dsvDescriptorHeap;
