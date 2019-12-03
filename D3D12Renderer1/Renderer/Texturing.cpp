@@ -99,11 +99,6 @@ void Texture2D::destroy()
 		m_textureStorageHeap->Release();
 }
 
-void Texture2D::bind(int rootParameterIndex)
-{
-	D3DContext::getCurrent()->getCurrentCommandList().m_commandList->SetGraphicsRootShaderResourceView(rootParameterIndex, m_textureAddress);
-}
-
 void Texture2D::unpackRGBToRGBA(int width, int height, unsigned char * input, unsigned char * output)	//(un)safe method of unpacking RGB to RGBA, feat char pointers
 {
 

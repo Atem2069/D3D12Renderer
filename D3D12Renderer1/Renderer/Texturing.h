@@ -9,12 +9,10 @@ public:
 	bool init(std::string texturePath, ResourceHeap& resourceHeap);
 	void destroy();
 
-	void bind(int rootParameterIndex);
 	int m_descriptorOffset;
 
 	static bool generateMipmaps(ID3D12Resource* resource, int numMipMaps, int width, int height);
 private:
-	D3D12_GPU_VIRTUAL_ADDRESS m_textureAddress;
 	ID3D12Resource* m_textureStorageHeap;
 	ID3D12Resource* m_textureUploadHeap;
 

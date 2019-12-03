@@ -70,7 +70,7 @@ int main()
 	ImGui::StyleColorsClassic();
 
 	ResourceHeap m_imguiResourceHeap;
-	if (!m_imguiResourceHeap.init(64,1))
+	if (!m_imguiResourceHeap.init(64,1,D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV))
 		return -1;
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE baseResHeapDescHandle(m_imguiResourceHeap.getHeap(0)->GetCPUDescriptorHandleForHeapStart());
@@ -151,7 +151,7 @@ int main()
 		return -1;
 
 	ResourceHeap m_objectsResourceHeap;
-	if (!m_objectsResourceHeap.init(65535,1))
+	if (!m_objectsResourceHeap.init(65535,1,D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV))
 		return -1;
 
 

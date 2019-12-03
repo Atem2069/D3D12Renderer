@@ -5,7 +5,7 @@
 class ResourceHeap
 {
 public:
-	bool init(int numDescriptors, int numHeapsToCreate);
+	bool init(int numDescriptors, int numHeapsToCreate, D3D12_DESCRIPTOR_HEAP_TYPE descriptorHeapType);
 	void destroy();
 
 	void bindDescriptorTable(int rootParameterIndex, int baseDescriptorIndex, int descriptorHeapIndex);
@@ -15,6 +15,7 @@ public:
 
 	ID3D12DescriptorHeap* getHeap(int index);
 private:
+	D3D12_DESCRIPTOR_HEAP_TYPE m_descriptorHeapType;
 	int m_numHeaps = 0;
 	ID3D12DescriptorHeap* m_descriptorHeaps[2];
 };
