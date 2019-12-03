@@ -1,10 +1,11 @@
 #include "ResourceHeap.h"
 
-bool ResourceHeap::init(int numDescriptors)
+bool ResourceHeap::init(int numDescriptors, int numHeapsToCreate)
 {
 	HRESULT result;
-
-	for (int i = 0; i < 1; i++)
+	assert(numHeapsToCreate <= 2);
+	m_numHeaps = numHeapsToCreate;
+	for (int i = 0; i < numHeapsToCreate; i++)
 	{
 		D3D12_DESCRIPTOR_HEAP_DESC dhDesc = {};
 		dhDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
@@ -28,19 +29,9 @@ void ResourceHeap::destroy()
 	//todo
 }
 
-void ResourceHeap::bindDescriptorTable(int rootParameterIndex, int baseDescriptorIndex)
-{
-	CD3DX12_GPU_DESCRIPTOR_HANDLE gpuDescriptorHandle(m_descriptorHeaps[D3DContext::getCurrent()->getCurrentBuffer()]->GetGPUDescriptorHandleForHeapStart());
-	if (baseDescriptorIndex)
-	{
-		UINT increment = D3DContext::getCurrent()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		gpuDescriptorHandle.Offset(baseDescriptorIndex, increment);
-	}
-	D3DContext::getCurrent()->getCurrentCommandList().m_commandList->SetGraphicsRootDescriptorTable(rootParameterIndex, gpuDescriptorHandle);
-}
-
 void ResourceHeap::bindDescriptorTable(int rootParameterIndex, int baseDescriptorIndex, int descriptorHeapIndex)
 {
+	assert((descriptorHeapIndex + 1) <= 2);
 	CD3DX12_GPU_DESCRIPTOR_HANDLE gpuDescriptorHandle(m_descriptorHeaps[descriptorHeapIndex]->GetGPUDescriptorHandleForHeapStart());
 	if (baseDescriptorIndex)
 	{
@@ -50,12 +41,7 @@ void ResourceHeap::bindDescriptorTable(int rootParameterIndex, int baseDescripto
 	D3DContext::getCurrent()->getCurrentCommandList().m_commandList->SetGraphicsRootDescriptorTable(rootParameterIndex, gpuDescriptorHandle);
 }
 
-ID3D12DescriptorHeap* ResourceHeap::getCurrent()
-{
-	return m_descriptorHeaps[D3DContext::getCurrent()->getCurrentBuffer()];
-}
-
-ID3D12DescriptorHeap* ResourceHeap::getCurrent(int index)
+ID3D12DescriptorHeap* ResourceHeap::getHeap(int index)
 {
 	return m_descriptorHeaps[index];
 }

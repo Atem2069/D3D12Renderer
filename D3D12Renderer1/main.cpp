@@ -70,13 +70,13 @@ int main()
 	ImGui::StyleColorsClassic();
 
 	ResourceHeap m_imguiResourceHeap;
-	if (!m_imguiResourceHeap.init(64))
+	if (!m_imguiResourceHeap.init(64,1))
 		return -1;
 
-	CD3DX12_CPU_DESCRIPTOR_HANDLE baseResHeapDescHandle(m_imguiResourceHeap.getCurrent(0)->GetCPUDescriptorHandleForHeapStart());
+	CD3DX12_CPU_DESCRIPTOR_HANDLE baseResHeapDescHandle(m_imguiResourceHeap.getHeap(0)->GetCPUDescriptorHandleForHeapStart());
 	baseResHeapDescHandle.Offset(m_imguiResourceHeap.numBoundDescriptors, D3DContext::getCurrent()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
 
-	CD3DX12_GPU_DESCRIPTOR_HANDLE baseResHeapDescGPUHandle(m_imguiResourceHeap.getCurrent(0)->GetGPUDescriptorHandleForHeapStart());;
+	CD3DX12_GPU_DESCRIPTOR_HANDLE baseResHeapDescGPUHandle(m_imguiResourceHeap.getHeap(0)->GetGPUDescriptorHandleForHeapStart());;
 	baseResHeapDescGPUHandle.Offset(m_imguiResourceHeap.numBoundDescriptors, D3DContext::getCurrent()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
 	ImGui_ImplGlfw_InitForVulkan(m_window, true);
 	ImGui_ImplDX12_Init(D3DContext::getCurrent()->getDevice(), 2, DXGI_FORMAT_R8G8B8A8_UNORM, baseResHeapDescHandle, baseResHeapDescGPUHandle);
@@ -151,7 +151,7 @@ int main()
 		return -1;
 
 	ResourceHeap m_objectsResourceHeap;
-	if (!m_objectsResourceHeap.init(65535))
+	if (!m_objectsResourceHeap.init(65535,1))
 		return -1;
 
 
@@ -233,7 +233,7 @@ int main()
 		m_cameraBuffer.update(&m_basicCamera, sizeof(BasicCamera));
 		m_lightBuffer.update(&m_light, sizeof(LightBuffer));
 	
-		ID3D12DescriptorHeap* objResHeaps[1] = { m_objectsResourceHeap.getCurrent(0) };
+		ID3D12DescriptorHeap* objResHeaps[1] = { m_objectsResourceHeap.getHeap(0) };
 		D3DContext::getCurrent()->bindAllResourceHeaps(objResHeaps, 1);
 
 		m_pipeline.bind();
@@ -244,7 +244,7 @@ int main()
 		m_object.draw(m_objectsResourceHeap);
 		m_object2.draw(m_objectsResourceHeap);
 
-		ID3D12DescriptorHeap* baseResHeaps[1] = { m_imguiResourceHeap.getCurrent(0) };
+		ID3D12DescriptorHeap* baseResHeaps[1] = { m_imguiResourceHeap.getHeap(0) };
 		D3DContext::getCurrent()->bindAllResourceHeaps(baseResHeaps, 1);
 		ImGui::Render();
 		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), D3DContext::getCurrent()->getCurrentCommandList().m_commandList);

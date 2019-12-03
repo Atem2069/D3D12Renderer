@@ -63,7 +63,7 @@ bool Texture2D::init(std::string texturePath, ResourceHeap& resourceHeap)
 	stbi_image_free(imgData);
 	delete[] rgbaImageData;
 
-	CD3DX12_CPU_DESCRIPTOR_HANDLE resourceHeapHandle(resourceHeap.getCurrent(0)->GetCPUDescriptorHandleForHeapStart());
+	CD3DX12_CPU_DESCRIPTOR_HANDLE resourceHeapHandle(resourceHeap.getHeap(0)->GetCPUDescriptorHandleForHeapStart());
 	if (resourceHeap.numBoundDescriptors > 0)
 	{
 		UINT increment = D3DContext::getCurrent()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);

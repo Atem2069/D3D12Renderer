@@ -166,7 +166,7 @@ bool DirectionalShadowMap::init(float width, float height, float orthoWidth, flo
 	srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
 	srvDesc.Texture2D.MipLevels = 1;
 	
-	CD3DX12_CPU_DESCRIPTOR_HANDLE resourceHeapDescriptorHandle(objectsResourceHeap.getCurrent(0)->GetCPUDescriptorHandleForHeapStart());
+	CD3DX12_CPU_DESCRIPTOR_HANDLE resourceHeapDescriptorHandle(objectsResourceHeap.getHeap(0)->GetCPUDescriptorHandleForHeapStart());
 	if (objectsResourceHeap.numBoundDescriptors > 0)
 	{
 		UINT64 increment = D3DContext::getCurrent()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
